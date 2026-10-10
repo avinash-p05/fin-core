@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: fincore
+  datasource:
+    url: ${FINCORE_DB_URL:jdbc:postgresql://localhost:5432/fincore}
+    username: ${FINCORE_DB_USER:fincore}
+    password: ${FINCORE_DB_PASSWORD:fincore}
+    hikari:
+      maximum-pool-size: ${FINCORE_DB_POOL_SIZE:20}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+server:
+  port: ${FINCORE_PORT:8080}
+  error:
+    include-stacktrace: never
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+fincore:
+  security:
+    # Local-development users only. Override via environment variables; see README.
+    operator-username: ${FINCORE_OPERATOR_USER:operator}
+    operator-password: ${FINCORE_OPERATOR_PASSWORD:operator-dev-password}
+    analyst-username: ${FINCORE_ANALYST_USER:analyst}
+    analyst-password: ${FINCORE_ANALYST_PASSWORD:analyst-dev-password}
+    allowed-origins: ${FINCORE_ALLOWED_ORIGINS:http://localhost:5173}
