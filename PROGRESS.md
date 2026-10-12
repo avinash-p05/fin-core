@@ -16,3 +16,17 @@
 - `CHECK` constraint prevents negative balances on customer accounts at the database level.
 - Local-dev HTTP Basic security (operator / analyst roles), ProblemDetail error handling, OpenAPI.
 - Tests: `AccountApiTest` — 5 tests, 5 passed (real PostgreSQL via Testcontainers).
+
+## Phase 2: payments, ledger, idempotency — DONE
+
+- Flyway `V2__payments_ledger_idempotency.sql`: payments, idempotency_keys, ledger_transactions, ledger_entries.
+- Database-enforced invariants: deferred constraint trigger (debits = credits, ≥ 2 entries per
+  ledger transaction, checked at COMMIT), immutability triggers on ledger tables, refund-bounds CHECK.
+- Transfers lock both accounts (`SELECT ... FOR UPDATE`) in deterministic UUID order.
+- Opening balances are explicit OPENING_BALANCE ledger transactions against the system funding account.
+- Durable idempotency: `INSERT ... ON CONFLICT DO NOTHING` + SHA-256 request fingerprint, same transaction as the payment.
+- Ledger history/search, per-payment ledger, per-account reconciliation, whole-ledger verification (REPEATABLE READ snapshot).
+- Bug found by the concurrency test and fixed: `SELECT ... FOR UPDATE` via a repository query returned a stale
+  entity already in the persistence context, causing lost updates. `RowLocks` now refreshes under the lock.
+- Tests: 24 run, 24 passed (AccountApiTest 5, PaymentIntegrationTest 9, PaymentConcurrencyTest 3,
+  LedgerIntegrityTest 5, PaymentApiTest 2).

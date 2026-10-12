@@ -1,5 +1,6 @@
 package com.fincore.account;
 
+import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -8,7 +9,11 @@ import java.util.UUID;
 
 import com.fincore.account.AccountDtos.CreateAccountRequest;
 import com.fincore.common.ApiException;
+import com.fincore.common.Money;
+import com.fincore.common.RowLocks;
 import com.fincore.customer.CustomerService;
+import com.fincore.ledger.LedgerService;
+import com.fincore.ledger.LedgerTransactionType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,20 +23,31 @@ public class AccountService {
 
     private final AccountRepository accounts;
     private final CustomerService customers;
+    private final LedgerService ledger;
+    private final RowLocks rowLocks;
 
-    public AccountService(AccountRepository accounts, CustomerService customers) {
+    public AccountService(AccountRepository accounts, CustomerService customers, LedgerService ledger,
+                          RowLocks rowLocks) {
         this.accounts = accounts;
         this.customers = customers;
+        this.ledger = ledger;
+        this.rowLocks = rowLocks;
     }
 
     @Transactional
     public Account create(CreateAccountRequest request) {
         customers.get(request.customerId());
-        if (request.openingBalance() != null && request.openingBalance().signum() > 0) {
-            // Opening balances must be posted through the ledger, which is introduced in phase 2.
-            throw ApiException.unprocessable("NOT_SUPPORTED", "Opening balances are not supported yet");
+        Account account = accounts.saveAndFlush(Account.openCustomerAccount(request.customerId(), request.displayName().trim()));
+        BigDecimal opening = request.openingBalance() == null ? BigDecimal.ZERO : Money.normalize(request.openingBalance());
+        if (opening.signum() > 0) {
+            // The opening balance is an explicit, balanced ledger transaction: DEBIT the system
+            // funding account, CREDIT the new account. Balance and ledger commit together.
+            Map<UUID, Account> locked = lockInOrder(Account.SYSTEM_FUNDING_ACCOUNT_ID, account.getId());
+            ledger.postTransfer(LedgerTransactionType.OPENING_BALANCE, null, null, "Opening balance",
+                    Account.SYSTEM_FUNDING_ACCOUNT_ID, account.getId(), opening, locked);
+            return locked.get(account.getId());
         }
-        return accounts.save(Account.openCustomerAccount(request.customerId(), request.displayName().trim()));
+        return account;
     }
 
     @Transactional(readOnly = true)
@@ -80,7 +96,7 @@ public class AccountService {
     }
 
     private Account lock(UUID id) {
-        return accounts.findByIdForUpdate(id).orElseThrow(() -> ApiException.notFound("Account", id));
+        return rowLocks.lockForUpdate(Account.class, id).orElseThrow(() -> ApiException.notFound("Account", id));
     }
 
     private static void requireCustomerAccount(Account account) {

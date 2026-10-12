@@ -6,11 +6,11 @@ import java.util.UUID;
 
 import com.fincore.common.ApiException;
 import com.fincore.common.Money;
+import com.fincore.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 /**
@@ -22,13 +22,10 @@ import jakarta.persistence.Table;
  */
 @Entity
 @Table(name = "accounts")
-public class Account {
+public class Account extends BaseEntity {
 
     /** Counterparty for opening balances. Created by the V1 migration. */
     public static final UUID SYSTEM_FUNDING_ACCOUNT_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
-
-    @Id
-    private UUID id;
 
     @Column(name = "customer_id", updatable = false)
     private UUID customerId;
@@ -105,10 +102,6 @@ public class Account {
 
     public boolean isActive() {
         return status == AccountStatus.ACTIVE;
-    }
-
-    public UUID getId() {
-        return id;
     }
 
     public UUID getCustomerId() {

@@ -7,15 +7,21 @@ import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * Real infrastructure for integration tests. Containers are Spring beans, so they are shared by
- * every test class that reuses the same cached application context.
+ * Real infrastructure for integration tests. Containers are JVM-wide singletons (started once,
+ * stopped by Testcontainers' Ryuk at JVM exit) so that several Spring test contexts can share them.
  */
 @TestConfiguration(proxyBeanMethods = false)
 public class TestcontainersConfig {
 
-    @Bean
+    static final PostgreSQLContainer POSTGRES = new PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"));
+
+    static {
+        POSTGRES.start();
+    }
+
+    @Bean(destroyMethod = "")
     @ServiceConnection
     PostgreSQLContainer postgres() {
-        return new PostgreSQLContainer(DockerImageName.parse("postgres:16-alpine"));
+        return POSTGRES;
     }
 }

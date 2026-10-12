@@ -3,17 +3,14 @@ package com.fincore.customer;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.fincore.common.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "customers")
-public class Customer {
-
-    @Id
-    private UUID id;
+public class Customer extends BaseEntity {
 
     @Column(name = "full_name", nullable = false)
     private String fullName;
@@ -32,10 +29,6 @@ public class Customer {
         this.fullName = fullName;
         this.email = email;
         this.createdAt = Instant.now();
-    }
-
-    public UUID getId() {
-        return id;
     }
 
     public String getFullName() {
