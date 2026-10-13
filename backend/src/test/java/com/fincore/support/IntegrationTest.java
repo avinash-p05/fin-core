@@ -24,9 +24,14 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * Base class for integration tests against real infrastructure. Every test creates its own
  * customers and accounts (random emails/ids) so tests never depend on each other's data.
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+        // Concurrency tests send up to 16 payments per source account; keep velocity out of their way.
+        "fincore.fraud.velocity.max-transactions=" + IntegrationTest.TEST_VELOCITY_MAX
+})
 @Import(TestcontainersConfig.class)
 public abstract class IntegrationTest {
+
+    public static final int TEST_VELOCITY_MAX = 20;
 
     @Autowired
     protected CustomerService customerService;

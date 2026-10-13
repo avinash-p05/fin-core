@@ -13,6 +13,10 @@ import com.fincore.account.AccountService;
 import com.fincore.account.AccountType;
 import com.fincore.common.ApiException;
 import com.fincore.common.Money;
+import com.fincore.common.RowLocks;
+import com.fincore.fraud.FraudAlertService;
+import com.fincore.fraud.FraudAssessment;
+import com.fincore.fraud.FraudService;
 import com.fincore.idempotency.IdempotencyService;
 import com.fincore.ledger.LedgerService;
 import com.fincore.ledger.LedgerTransactionType;
@@ -36,19 +40,27 @@ public class PaymentService {
     private final AccountService accountService;
     private final LedgerService ledger;
     private final IdempotencyService idempotency;
+    private final FraudService fraud;
+    private final FraudAlertService alerts;
+    private final RowLocks rowLocks;
 
     public PaymentService(PaymentRepository payments, AccountRepository accounts, AccountService accountService,
-                          LedgerService ledger, IdempotencyService idempotency) {
+                          LedgerService ledger, IdempotencyService idempotency, FraudService fraud,
+                          FraudAlertService alerts, RowLocks rowLocks) {
         this.payments = payments;
         this.accounts = accounts;
         this.accountService = accountService;
         this.ledger = ledger;
         this.idempotency = idempotency;
+        this.fraud = fraud;
+        this.alerts = alerts;
+        this.rowLocks = rowLocks;
     }
 
     /**
-     * Creates and (if possible) executes a transfer in ONE database transaction: idempotency
-     * claim, payment row, account locks, balance updates and ledger entries all commit together.
+     * Creates, screens and (if approved) executes a transfer in ONE database transaction:
+     * idempotency claim, payment row, fraud decision/alert, account locks, balance updates and
+     * ledger entries all commit together.
      * Business outcomes such as insufficient funds are persisted as FAILED payments (and replayed
      * for the same key); validation errors roll everything back, including the key claim.
      */
@@ -74,8 +86,47 @@ public class PaymentService {
                 request.sourceAccountId(), request.destinationAccountId(), amount, description));
         idempotency.attach(idempotencyKey, payment.getId());
 
-        settle(payment);
+        // Fraud screening happens BEFORE any balance change. Only APPROVED payments move money now;
+        // REVIEW holds the payment (no debit, no ledger) until an analyst decides.
+        FraudAssessment assessment = fraud.evaluate(payment.getSourceAccountId(), payment.getDestinationAccountId(), amount);
+        payment.recordFraudAssessment(assessment);
+        switch (assessment.decision()) {
+            case APPROVED -> settle(payment);
+            case REVIEW -> {
+                payment.markPendingReview();
+                alerts.open(payment.getId(), assessment);
+            }
+            case DECLINED -> {
+                payment.markDeclined(PaymentFailureReason.FRAUD_DECLINED);
+                alerts.open(payment.getId(), assessment);
+            }
+        }
         return new PaymentResult(payment, false);
+    }
+
+    /** Analyst approved a held payment: execute it now (funds and account status are re-checked). */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Payment releaseHeldPayment(UUID paymentId) {
+        Payment payment = lockHeld(paymentId);
+        settle(payment);
+        return payment;
+    }
+
+    /** Analyst rejected a held payment: decline it. No money ever moved. */
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Payment rejectHeldPayment(UUID paymentId) {
+        Payment payment = lockHeld(paymentId);
+        payment.markDeclined(PaymentFailureReason.FRAUD_REVIEW_REJECTED);
+        return payment;
+    }
+
+    private Payment lockHeld(UUID paymentId) {
+        Payment payment = rowLocks.lockForUpdate(Payment.class, paymentId)
+                .orElseThrow(() -> ApiException.notFound("Payment", paymentId));
+        if (payment.getStatus() != PaymentStatus.PENDING_REVIEW) {
+            throw ApiException.conflict("PAYMENT_NOT_HELD", "Payment " + paymentId + " is not pending review");
+        }
+        return payment;
     }
 
     /**

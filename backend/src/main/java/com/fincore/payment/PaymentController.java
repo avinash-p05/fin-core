@@ -1,11 +1,15 @@
 package com.fincore.payment;
 
+import java.util.List;
 import java.util.UUID;
 
 import com.fincore.common.PageResponse;
 import com.fincore.payment.PaymentDtos.CreatePaymentRequest;
 import com.fincore.payment.PaymentDtos.PaymentResponse;
 import com.fincore.payment.PaymentDtos.PaymentResult;
+import com.fincore.payment.PaymentDtos.RefundRequest;
+import com.fincore.payment.PaymentDtos.RefundResponse;
+import com.fincore.payment.PaymentDtos.RefundResult;
 import com.fincore.payment.PaymentService.PaymentFilter;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,9 +41,11 @@ public class PaymentController {
     static final String REPLAYED_HEADER = "Idempotent-Replayed";
 
     private final PaymentService service;
+    private final RefundService refunds;
 
-    public PaymentController(PaymentService service) {
+    public PaymentController(PaymentService service, RefundService refunds) {
         this.service = service;
+        this.refunds = refunds;
     }
 
     @PostMapping
@@ -68,6 +74,27 @@ public class PaymentController {
     @Operation(summary = "Get a payment and its current status")
     public PaymentResponse get(@PathVariable UUID paymentId) {
         return PaymentResponse.from(service.get(paymentId));
+    }
+
+    @PostMapping("/{paymentId}/refund")
+    @Operation(summary = "Refund a completed payment (full remaining amount if 'amount' is omitted)",
+            description = "Posts a compensating ledger transaction. Requires an Idempotency-Key.")
+    public ResponseEntity<RefundResponse> refund(
+            @PathVariable UUID paymentId,
+            @RequestHeader(IDEMPOTENCY_HEADER) String idempotencyKey,
+            @Valid @RequestBody(required = false) RefundRequest request) {
+        RefundResult result = refunds.refund(paymentId, idempotencyKey,
+                request == null ? new RefundRequest(null, null) : request);
+        return ResponseEntity.status(result.replayed() ? HttpStatus.OK : HttpStatus.CREATED)
+                .header(REPLAYED_HEADER, String.valueOf(result.replayed()))
+                .body(RefundResponse.from(result.refund(), result.payment()));
+    }
+
+    @GetMapping("/{paymentId}/refunds")
+    @Operation(summary = "Refunds of a payment")
+    public List<RefundResponse> refunds(@PathVariable UUID paymentId) {
+        Payment payment = service.get(paymentId);
+        return refunds.forPayment(paymentId).stream().map(r -> RefundResponse.from(r, payment)).toList();
     }
 
     static ResponseEntity<PaymentResponse> respond(Payment payment, boolean replayed) {

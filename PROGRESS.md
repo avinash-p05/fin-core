@@ -30,3 +30,17 @@
   entity already in the persistence context, causing lost updates. `RowLocks` now refreshes under the lock.
 - Tests: 24 run, 24 passed (AccountApiTest 5, PaymentIntegrationTest 9, PaymentConcurrencyTest 3,
   LedgerIntegrityTest 5, PaymentApiTest 2).
+
+## Phase 3: refunds, fraud scoring, Redis velocity, review workflow — DONE
+
+- Flyway `V3__refunds_and_fraud.sql`: refunds, fraud columns on payments, fraud_alerts.
+- Refunds: full or partial, idempotent, payment row locked to serialise refunds, compensating REFUND
+  ledger transaction (original TRANSFER untouched), bounded by original amount (app check + DB CHECK).
+- Fraud rules (configurable in `fincore.fraud.*`): HIGH_VALUE, VELOCITY (Redis), NEW_BENEFICIARY.
+  Additive score → APPROVED / REVIEW / DECLINED. Evaluated before any balance change.
+- Redis velocity: atomic Lua `INCR` + `PEXPIRE` fixed window; 500 ms timeouts.
+  Redis unavailable → `VELOCITY_CHECK_UNAVAILABLE`, decision floor REVIEW (configurable to DECLINED; APPROVED rejected at startup).
+- Alerts for REVIEW and DECLINED; analyst-only PATCH; APPROVED executes the held payment (re-checks funds),
+  REJECTED declines it, DECLINED alerts can only be CLOSED. Alert row lock prevents double execution.
+- Tests: 52 run, 52 passed (new: FraudServiceTest 9, FraudWorkflowTest 9, VelocityTrackerTest 3,
+  RedisOutageTest 1, RefundIntegrationTest 6).

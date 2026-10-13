@@ -2,10 +2,14 @@ package com.fincore.payment;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
-import com.fincore.common.Money;
 import com.fincore.common.BaseEntity;
+import com.fincore.common.Money;
+import com.fincore.fraud.FraudAssessment;
+import com.fincore.fraud.FraudDecision;
+import com.fincore.fraud.FraudRule;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -42,6 +46,16 @@ public class Payment extends BaseEntity {
     @Column(name = "refunded_amount", nullable = false, precision = 19, scale = 2)
     private BigDecimal refundedAmount;
 
+    @Column(name = "fraud_score")
+    private Integer fraudScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "fraud_decision")
+    private FraudDecision fraudDecision;
+
+    @Column(name = "fraud_rules")
+    private String fraudRules;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -70,6 +84,12 @@ public class Payment extends BaseEntity {
         p.createdAt = Instant.now();
         p.updatedAt = p.createdAt;
         return p;
+    }
+
+    void recordFraudAssessment(FraudAssessment assessment) {
+        fraudScore = assessment.score();
+        fraudDecision = assessment.decision();
+        fraudRules = assessment.rulesAsString();
     }
 
     void markCompleted() {
@@ -135,6 +155,18 @@ public class Payment extends BaseEntity {
 
     public BigDecimal getRefundedAmount() {
         return refundedAmount;
+    }
+
+    public Integer getFraudScore() {
+        return fraudScore;
+    }
+
+    public FraudDecision getFraudDecision() {
+        return fraudDecision;
+    }
+
+    public List<FraudRule> getFraudRules() {
+        return FraudAssessment.parseRules(fraudRules);
     }
 
     public Instant getCreatedAt() {
