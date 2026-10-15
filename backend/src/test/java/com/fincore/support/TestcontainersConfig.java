@@ -4,6 +4,7 @@ import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -19,9 +20,12 @@ public class TestcontainersConfig {
     static final GenericContainer<?> REDIS = new GenericContainer<>(DockerImageName.parse("redis:7-alpine"))
             .withExposedPorts(6379);
 
+    static final KafkaContainer KAFKA = new KafkaContainer(DockerImageName.parse("apache/kafka-native:3.8.1"));
+
     static {
         POSTGRES.start();
         REDIS.start();
+        KAFKA.start();
     }
 
     @Bean(destroyMethod = "")
@@ -34,5 +38,11 @@ public class TestcontainersConfig {
     @ServiceConnection(name = "redis")
     GenericContainer<?> redis() {
         return REDIS;
+    }
+
+    @Bean(destroyMethod = "")
+    @ServiceConnection
+    KafkaContainer kafka() {
+        return KAFKA;
     }
 }

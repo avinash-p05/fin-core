@@ -25,6 +25,23 @@ spring:
       # Fail fast: a Redis outage must not hang payment requests (see fraud failure policy).
       timeout: 500ms
       connect-timeout: 500ms
+  kafka:
+    bootstrap-servers: ${FINCORE_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+        # Bounded blocking so a Kafka outage cannot stall the outbox publisher for minutes.
+        max.block.ms: 5000
+        request.timeout.ms: 5000
+        delivery.timeout.ms: 10000
+    consumer:
+      group-id: fincore-notifications
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    listener:
+      # Commit the offset after each record has been processed (and its DB transaction committed).
+      ack-mode: record
 
 server:
   port: ${FINCORE_PORT:8080}
@@ -47,6 +64,20 @@ springdoc:
     path: /v3/api-docs
 
 fincore:
+  kafka:
+    payment-events-topic: fincore.payment-events
+  outbox:
+    publisher-enabled: ${FINCORE_OUTBOX_PUBLISHER_ENABLED:true}
+    poll-interval: 1s
+    batch-size: 50
+    max-attempts: 10
+    initial-backoff: 1s
+    max-backoff: 5m
+    send-timeout: 10s
+  consumer:
+    enabled: ${FINCORE_CONSUMER_ENABLED:true}
+    max-retries: 3
+    retry-backoff: 500ms
   fraud:
     review-threshold: 40      # score >= 40 -> REVIEW
     decline-threshold: 70     # score >= 70 -> DECLINED

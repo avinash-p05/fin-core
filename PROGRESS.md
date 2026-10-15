@@ -44,3 +44,15 @@
   REJECTED declines it, DECLINED alerts can only be CLOSED. Alert row lock prevents double execution.
 - Tests: 52 run, 52 passed (new: FraudServiceTest 9, FraudWorkflowTest 9, VelocityTrackerTest 3,
   RedisOutageTest 1, RefundIntegrationTest 6).
+
+## Phase 4: transactional outbox and Kafka — DONE
+
+- Flyway `V4__outbox_and_consumer.sql`: outbox_events (JSONB payload), processed_events, payment_notifications.
+- `PaymentCompleted` / `PaymentRefunded` events written to the outbox in the same transaction as
+  the ledger posting (`Propagation.MANDATORY`).
+- `OutboxPublisher`: `FOR UPDATE SKIP LOCKED` batch claim, synchronous send with timeout, exponential
+  backoff, parked as FAILED after `max-attempts`; stops a batch at the first failure.
+- Consumer (`notification` package, in-process, toggle `fincore.consumer.enabled`): de-duplicates on
+  `(consumer, event_id)` in the same DB transaction as its effect; 3 bounded retries then `<topic>.DLT`;
+  malformed JSON is not retried.
+- Tests: 61 run, 61 passed (new: OutboxPublisherTest 4, OutboxKafkaIntegrationTest 5 against real Kafka).

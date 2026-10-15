@@ -14,12 +14,14 @@ import com.fincore.account.AccountType;
 import com.fincore.common.ApiException;
 import com.fincore.common.Money;
 import com.fincore.common.RowLocks;
+import com.fincore.events.PaymentEvent;
 import com.fincore.fraud.FraudAlertService;
 import com.fincore.fraud.FraudAssessment;
 import com.fincore.fraud.FraudService;
 import com.fincore.idempotency.IdempotencyService;
 import com.fincore.ledger.LedgerService;
 import com.fincore.ledger.LedgerTransactionType;
+import com.fincore.outbox.OutboxService;
 import com.fincore.payment.PaymentDtos.CreatePaymentRequest;
 import com.fincore.payment.PaymentDtos.PaymentResult;
 import jakarta.persistence.criteria.Predicate;
@@ -43,10 +45,11 @@ public class PaymentService {
     private final FraudService fraud;
     private final FraudAlertService alerts;
     private final RowLocks rowLocks;
+    private final OutboxService outbox;
 
     public PaymentService(PaymentRepository payments, AccountRepository accounts, AccountService accountService,
                           LedgerService ledger, IdempotencyService idempotency, FraudService fraud,
-                          FraudAlertService alerts, RowLocks rowLocks) {
+                          FraudAlertService alerts, RowLocks rowLocks, OutboxService outbox) {
         this.payments = payments;
         this.accounts = accounts;
         this.accountService = accountService;
@@ -55,6 +58,7 @@ public class PaymentService {
         this.fraud = fraud;
         this.alerts = alerts;
         this.rowLocks = rowLocks;
+        this.outbox = outbox;
     }
 
     /**
@@ -151,6 +155,10 @@ public class PaymentService {
         ledger.postTransfer(LedgerTransactionType.TRANSFER, payment.getId(), null,
                 "Payment " + payment.getId(), source.getId(), destination.getId(), payment.getAmount(), locked);
         payment.markCompleted();
+        // Same transaction as the ledger posting: the event exists iff the transfer committed.
+        outbox.record(new PaymentEvent(UUID.randomUUID(), PaymentEvent.PAYMENT_COMPLETED, payment.getCompletedAt(),
+                payment.getId(), source.getId(), destination.getId(), payment.getAmount().toPlainString(),
+                payment.getCurrency(), null));
     }
 
     @Transactional(readOnly = true)

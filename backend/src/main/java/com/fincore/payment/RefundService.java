@@ -11,9 +11,11 @@ import com.fincore.account.AccountService;
 import com.fincore.common.ApiException;
 import com.fincore.common.Money;
 import com.fincore.common.RowLocks;
+import com.fincore.events.PaymentEvent;
 import com.fincore.idempotency.IdempotencyService;
 import com.fincore.ledger.LedgerService;
 import com.fincore.ledger.LedgerTransactionType;
+import com.fincore.outbox.OutboxService;
 import com.fincore.payment.PaymentDtos.RefundRequest;
 import com.fincore.payment.PaymentDtos.RefundResult;
 import org.springframework.stereotype.Service;
@@ -35,15 +37,18 @@ public class RefundService {
     private final IdempotencyService idempotency;
     private final RefundRepository refunds;
     private final PaymentRepository payments;
+    private final OutboxService outbox;
 
     public RefundService(RowLocks rowLocks, AccountService accountService, LedgerService ledger,
-                         IdempotencyService idempotency, RefundRepository refunds, PaymentRepository payments) {
+                         IdempotencyService idempotency, RefundRepository refunds, PaymentRepository payments,
+                         OutboxService outbox) {
         this.rowLocks = rowLocks;
         this.accountService = accountService;
         this.ledger = ledger;
         this.idempotency = idempotency;
         this.refunds = refunds;
         this.payments = payments;
+        this.outbox = outbox;
     }
 
     @Transactional
@@ -89,6 +94,8 @@ public class RefundService {
                 payee.getId(), payer.getId(), amount, locked);
         payment.recordRefund(amount);
         idempotency.attach(idempotencyKey, refund.getId());
+        outbox.record(new PaymentEvent(UUID.randomUUID(), PaymentEvent.PAYMENT_REFUNDED, refund.getCreatedAt(),
+                paymentId, payer.getId(), payee.getId(), amount.toPlainString(), payment.getCurrency(), refund.getId()));
         return new RefundResult(refund, payment, false);
     }
 
