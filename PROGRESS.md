@@ -56,3 +56,17 @@
   `(consumer, event_id)` in the same DB transaction as its effect; 3 bounded retries then `<topic>.DLT`;
   malformed JSON is not retried.
 - Tests: 61 run, 61 passed (new: OutboxPublisherTest 4, OutboxKafkaIntegrationTest 5 against real Kafka).
+
+## Phase 5: React operations dashboard — DONE
+
+- `frontend/`: React 19, Vite 8, TypeScript 5.9, Tailwind CSS 4, React Router 7. No chart library (not needed).
+- Pages: Overview (backend `/dashboard/summary`), Payment Simulator, Ledger Explorer, Fraud Monitoring.
+- Centralised API client (`services/api.ts`) with typed responses (`types/api.ts`) and problem-detail errors;
+  loading / error / empty states; INR formatting via `Intl.NumberFormat('en-IN')`.
+- Simulator demos all hit the real API: insufficient funds, duplicate request (same key), key reuse (409),
+  high-value (REVIEW / DECLINED depending on beneficiary history), velocity burst, refund.
+- Backend additions: `GET /api/v1/dashboard/summary`, `GET /api/v1/me`, optional demo seed (`FINCORE_DEMO_SEED=true`).
+- Verified manually against a locally running backend + Docker infra: login, overview, simulator outcomes
+  (201 / 200 replay / 409 / FAILED insufficient funds / PENDING_REVIEW), analyst approval (one released
+  payment COMPLETED, one FAILED on re-check), ledger verification VALID.
+- `npm run build` passes (tsc + vite). Backend tests: 61 run, 61 passed.

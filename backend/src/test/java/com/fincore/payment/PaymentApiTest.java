@@ -66,6 +66,15 @@ class PaymentApiTest extends IntegrationTest {
         mvc.perform(get("/api/v1/payments").param("accountId", bob.getId().toString()).with(OPERATOR))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.totalElements").value(1));
+
+        mvc.perform(get("/api/v1/dashboard/summary").with(OPERATOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalPayments").isNumber())
+                .andExpect(jsonPath("$.recentPayments").isArray());
+
+        mvc.perform(get("/api/v1/ledger/entries").param("paymentId", id).with(OPERATOR))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(2));
     }
 
     @Test

@@ -64,6 +64,8 @@ springdoc:
     path: /v3/api-docs
 
 fincore:
+  demo:
+    seed: ${FINCORE_DEMO_SEED:false}
   kafka:
     payment-events-topic: fincore.payment-events
   outbox:
