@@ -70,3 +70,23 @@
   (201 / 200 replay / 409 / FAILED insufficient funds / PENDING_REVIEW), analyst approval (one released
   payment COMPLETED, one FAILED on re-check), ledger verification VALID.
 - `npm run build` passes (tsc + vite). Backend tests: 61 run, 61 passed.
+
+## Phase 6: Docker, documentation, final verification — DONE
+
+- `infrastructure/docker-compose.yml`: PostgreSQL 16, Redis 7, Kafka 3.8 (KRaft), backend, frontend (nginx).
+  Multi-stage Dockerfiles for backend (Temurin 21, non-root) and frontend (Node 22 build → nginx).
+- Verified: `docker compose up -d --build` → all services healthy; dashboard served on :3000 with the
+  `/api` proxy; dashboard summary and ledger verification (VALID) through nginx.
+- Manual Redis outage check on the Compose stack: with Redis stopped a ₹100 payment returned
+  `PENDING_REVIEW` with `VELOCITY_CHECK_UNAVAILABLE` (~0.8 s); after restarting Redis payments were approved again.
+- Added `FraudPropertiesValidationTest` (startup fails for APPROVED-on-outage and inverted thresholds).
+- Fixed `/api/v1/me` to return only roles (Spring Security 7 also grants `FACTOR_PASSWORD`).
+- Docs: README.md, docs/architecture.md, docs/interview-guide.md.
+- Final results: `./mvnw test` → **64 tests, 64 passed, 0 failed, 0 skipped**; `npm run build` → success.
+
+## Known issues / next steps
+
+- See "Known limitations" in README.md (dev-only auth, fixed-window velocity, no fund reservation for
+  held payments, possible event reordering under outbox backoff, no admin replay for FAILED outbox rows).
+- Possible next steps: admin endpoint to replay FAILED outbox events; authorisation holds for REVIEW
+  payments; sliding-window velocity; OIDC authentication; frontend component tests.
