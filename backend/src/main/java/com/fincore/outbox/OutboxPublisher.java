@@ -2,7 +2,9 @@ package com.fincore.outbox;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -10,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,39 +49,59 @@ public class OutboxPublisher {
     }
 
     /**
-     * Publishes one batch of due events and returns how many were successfully published. Stops at
-     * the first failure: if Kafka is down, the remaining rows stay untouched instead of each
+     * Publishes one batch of due events and returns how many were successfully published.
+     *
+     * <p>Records are pipelined: the whole batch is handed to the producer first and the broker
+     * acknowledgements are awaited afterwards, so one batch costs roughly one network round trip
+     * instead of one per event. If a send fails immediately (e.g. no broker metadata because Kafka
+     * is down), no further records are sent and the remaining rows stay untouched, rather than each
      * blocking for the producer timeout while this transaction holds their row locks.
      */
     @Transactional
     public int publishBatch() {
         List<OutboxEvent> due = outbox.lockDueEvents(clock.instant(), props.batchSize());
-        int published = 0;
+        List<InFlight> inFlight = new ArrayList<>(due.size());
         for (OutboxEvent event : due) {
-            if (!publish(event)) {
+            CompletableFuture<SendResult<String, String>> future;
+            try {
+                future = kafka.send(toRecord(event));
+            } catch (Exception e) {
+                fail(event, e);
                 break;
             }
-            published++;
+            inFlight.add(new InFlight(event, future));
+            if (future.isCompletedExceptionally()) {
+                break;
+            }
+        }
+
+        int published = 0;
+        long deadline = System.nanoTime() + props.sendTimeout().toNanos();
+        for (InFlight f : inFlight) {
+            try {
+                long remaining = Math.max(0, deadline - System.nanoTime());
+                f.future().get(remaining, TimeUnit.NANOSECONDS);
+                f.event().markPublished(clock.instant());
+                published++;
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                fail(f.event(), e);
+            } catch (Exception e) {
+                fail(f.event(), e);
+            }
         }
         return published;
     }
 
-    boolean publish(OutboxEvent event) {
+    private record InFlight(OutboxEvent event, CompletableFuture<SendResult<String, String>> future) {
+    }
+
+    private ProducerRecord<String, String> toRecord(OutboxEvent event) {
         // Key = payment id: all events of one payment land on the same partition, in send order.
         ProducerRecord<String, String> record = new ProducerRecord<>(topic, event.getAggregateId().toString(), event.getPayload());
         record.headers().add(HEADER_EVENT_ID, event.getId().toString().getBytes(UTF_8));
         record.headers().add(HEADER_EVENT_TYPE, event.getEventType().getBytes(UTF_8));
-        try {
-            kafka.send(record).get(props.sendTimeout().toMillis(), TimeUnit.MILLISECONDS);
-            event.markPublished(clock.instant());
-            return true;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            fail(event, e);
-        } catch (Exception e) {
-            fail(event, e);
-        }
-        return false;
+        return record;
     }
 
     private void fail(OutboxEvent event, Exception e) {

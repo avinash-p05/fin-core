@@ -15,6 +15,9 @@ spring:
       hibernate:
         jdbc:
           time_zone: UTC
+          batch_size: 50
+        order_updates: true
+        order_inserts: true
   flyway:
     enabled: true
     locations: classpath:db/migration
@@ -42,6 +45,8 @@ spring:
     listener:
       # Commit the offset after each record has been processed (and its DB transaction committed).
       ack-mode: record
+      # One consumer thread per partition of fincore.payment-events (3 partitions).
+      concurrency: 3
 
 server:
   port: ${FINCORE_PORT:8080}
@@ -71,7 +76,7 @@ fincore:
   outbox:
     publisher-enabled: ${FINCORE_OUTBOX_PUBLISHER_ENABLED:true}
     poll-interval: 1s
-    batch-size: 50
+    batch-size: 200
     max-attempts: 10
     initial-backoff: 1s
     max-backoff: 5m
@@ -104,3 +109,4 @@ fincore:
     analyst-username: ${FINCORE_ANALYST_USER:analyst}
     analyst-password: ${FINCORE_ANALYST_PASSWORD:analyst-dev-password}
     allowed-origins: ${FINCORE_ALLOWED_ORIGINS:http://localhost:5173}
+    bcrypt-strength: ${FINCORE_BCRYPT_STRENGTH:10}

@@ -65,18 +65,19 @@ class OutboxPublisherTest {
     @Test
     void failedSendSchedulesRetryWithExponentialBackoffThenParksAsFailed() {
         OutboxEvent event = event();
+        when(repository.lockDueEvents(any(), anyInt())).thenReturn(List.of(event));
         when(kafka.send(any(ProducerRecord.class))).thenReturn(CompletableFuture.failedFuture(new RuntimeException("broker down")));
 
-        publisher.publish(event);
+        publisher.publishBatch();
         assertThat(event.getStatus()).isEqualTo(OutboxStatus.PENDING);
         assertThat(event.getAttempts()).isEqualTo(1);
         assertThat(event.getNextAttemptAt()).isEqualTo(NOW.plusSeconds(1));
         assertThat(event.getLastError()).contains("broker down");
 
-        publisher.publish(event);
+        publisher.publishBatch();
         assertThat(event.getNextAttemptAt()).isEqualTo(NOW.plusSeconds(2));
 
-        publisher.publish(event); // third attempt == maxAttempts
+        publisher.publishBatch(); // third attempt == maxAttempts
         assertThat(event.getStatus()).isEqualTo(OutboxStatus.FAILED);
         assertThat(event.getAttempts()).isEqualTo(3);
     }
@@ -94,6 +95,34 @@ class OutboxPublisherTest {
         assertThat(first.getAttempts()).isEqualTo(1);
         assertThat(second.getAttempts()).isZero();
         assertThat(second.getStatus()).isEqualTo(OutboxStatus.PENDING);
+    }
+
+    @Test
+    void batchIsPipelinedAndAPartialFailureOnlyAffectsThatEvent() {
+        OutboxEvent first = event();
+        OutboxEvent second = event();
+        OutboxEvent third = event();
+        when(repository.lockDueEvents(any(), anyInt())).thenReturn(List.of(first, second, third));
+        // Not yet failed when handed back by send(); the broker error surfaces only when awaited.
+        CompletableFuture<SendResult<String, String>> slowFailure = new CompletableFuture<>() {
+            @Override
+            public SendResult<String, String> get(long timeout, java.util.concurrent.TimeUnit unit)
+                    throws java.util.concurrent.ExecutionException {
+                throw new java.util.concurrent.ExecutionException(new RuntimeException("not enough replicas"));
+            }
+        };
+        when(kafka.send(any(ProducerRecord.class)))
+                .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)))
+                .thenReturn(slowFailure)
+                .thenReturn(CompletableFuture.completedFuture(mock(SendResult.class)));
+
+        assertThat(publisher.publishBatch()).isEqualTo(2);
+
+        verify(kafka, times(3)).send(any(ProducerRecord.class));
+        assertThat(first.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
+        assertThat(second.getStatus()).isEqualTo(OutboxStatus.PENDING);
+        assertThat(second.getAttempts()).isEqualTo(1);
+        assertThat(third.getStatus()).isEqualTo(OutboxStatus.PUBLISHED);
     }
 
     @Test

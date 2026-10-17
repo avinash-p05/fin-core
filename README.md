@@ -276,7 +276,7 @@ cd frontend && npm run build     # type-check + production build
 ```
 
 The integration tests start real **PostgreSQL 16, Redis 7 and Kafka 3.8** containers, shared for
-the whole run. The last full run executed **64 tests: 64 passed, 0 failed**.
+the whole run. The last full run executed **65 tests: 65 passed, 0 failed**.
 
 | Test class | Tests | What it covers |
 |---|---|---|
@@ -291,12 +291,27 @@ the whole run. The last full run executed **64 tests: 64 passed, 0 failed**.
 | `VelocityTrackerTest` | 3 | 50 concurrent increments with no loss, TTL and window reset, connection refused |
 | `FraudWorkflowTest` | 9 | REVIEW moves no money, approve executes once (also concurrently), reject, re-check on approval, DECLINED, velocity through Redis, new beneficiary, analyst-only PATCH |
 | `RedisOutageTest` | 1 | Payment held for REVIEW when Redis fails |
-| `OutboxPublisherTest` (unit) | 4 | Success headers, exponential backoff, parking as FAILED, batch stops at first failure |
+| `OutboxPublisherTest` (unit) | 5 | Success headers, exponential backoff, parking as FAILED, pipelined batch with partial failure, stop sending when Kafka is unreachable |
 | `OutboxKafkaIntegrationTest` | 5 | Outbox written only on commit, consume, duplicate publication and delivery have no second effect, refund events, malformed message sent to DLT, bounded retries then DLT |
 
 The concurrency tests found a real bug during development. A repository
 `SELECT … FOR UPDATE` returned a stale entity that was already in the JPA persistence context,
 which caused lost updates. See `RowLocks` and the interview guide.
+
+## Load test
+
+k6 was run against the Docker Compose stack on one laptop (Ryzen 7 6800HS). Full details,
+caveats and raw output are in [loadtest/RESULTS.md](loadtest/RESULTS.md).
+
+- **~1,000 payments/s, p95 87 ms, 0 errors** with 50 virtual users over 100 accounts and BCrypt
+  strength 4. With the default strength 10 it was ~161/s, because HTTP Basic re-hashes the
+  password on every request.
+- **No overdraft under contention.** With 50 users debiting one account (~265/s), 3,998 debits
+  succeeded until the funds ran out and 11,885 were rejected as insufficient funds.
+- **Integrity across 211,878 payments.** The ledger verified VALID (200,563 transactions), and all
+  199,993 completed payments were published and consumed with 0 duplicate effects.
+- **Bottleneck found and fixed.** The outbox relay drained ~133 events/s because it awaited each
+  Kafka ack in turn. Pipelining raised it to >2,800 events/s.
 
 ## Known limitations
 
@@ -310,8 +325,11 @@ which caused lost updates. See `RowLocks` and the interview guide.
   a later event for the same payment, such as a refund, can be published first. The consumer
   handles each event independently.
 - **Outbox failures need manual handling.** Rows parked as `FAILED` after `max-attempts` have no
-  admin endpoint for replay. The publisher holds the rows' locks while it sends to Kafka (bounded
-  by a 10 s send timeout, and it stops at the first failure).
+  admin endpoint for replay. The publisher holds the batch's row locks while it awaits Kafka
+  acknowledgements (bounded by a 10 s send timeout).
+- **Consumer lag under peak load.** The in-process consumer shares CPU and database with the
+  payment path. At ~870 payments/s on one laptop it fell behind and caught up 46 s after the load
+  ended (see loadtest/RESULTS.md).
 - **The consumer runs in the same JVM** for simplicity. It only uses its own tables, so it could be
   moved to its own process.
 - **Idempotent replays return the payment's current state** (for example REFUNDED), not a byte-for-byte
@@ -322,7 +340,7 @@ which caused lost updates. See `RowLocks` and the interview guide.
   this scale.
 - **The fraud alert list makes one extra query per row** to load the payment summary (N+1).
 - **Single currency (INR), no fees, FX, scheduled payments or statements.** No rate limiting.
-- **No performance numbers are claimed.** No load testing has been done.
+- **Load-test numbers are from one laptop** with every component co-located. They are not production capacity figures.
 
 ## Further reading
 

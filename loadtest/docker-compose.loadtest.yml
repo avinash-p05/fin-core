@@ -1,0 +1,9 @@
+# Load-test override: relaxes the velocity LIMIT so settled transfers can be measured.
+# The velocity rule still runs (one Redis round trip per payment); only the threshold changes.
+services:
+  backend:
+    environment:
+      FINCORE_FRAUD_VELOCITY_MAXTRANSACTIONS: "1000000"
+      FINCORE_DEMO_SEED: "false"
+      # Only for the "payment path" run: cheaper password hashing (default 10). See loadtest/RESULTS.md.
+      FINCORE_BCRYPT_STRENGTH: ${FINCORE_BCRYPT_STRENGTH:-10}

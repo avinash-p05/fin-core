@@ -90,3 +90,12 @@
   held payments, possible event reordering under outbox backoff, no admin replay for FAILED outbox rows).
 - Possible next steps: admin endpoint to replay FAILED outbox events; authorisation holds for REVIEW
   payments; sliding-window velocity; OIDC authentication; frontend component tests.
+
+## Load testing — DONE (2026-10-17)
+
+- k6 script `loadtest/payments.js`, Compose override `loadtest/docker-compose.loadtest.yml`, results in `loadtest/RESULTS.md`.
+- Headline (one laptop): ~1,019 payments/s, p95 87 ms, 0 errors (BCrypt 4); ~161/s with default BCrypt 10.
+  Hot-account run: ~265/s, no overdraft. Integrity VALID across 211,878 payments; 0 duplicate consumer effects.
+- Fixes from the load test: pipelined outbox sends (133 → >2,800 events/s), outbox batch size 200, Hibernate JDBC batching,
+  Kafka listener concurrency 3 (~530 → ~1,041 events/s); BCrypt strength configurable (`FINCORE_BCRYPT_STRENGTH`, default 10).
+- Tests: 65 run, 65 passed.

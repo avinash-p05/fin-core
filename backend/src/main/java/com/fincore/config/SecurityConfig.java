@@ -51,8 +51,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+    PasswordEncoder passwordEncoder(SecurityProperties props) {
+        return new BCryptPasswordEncoder(props.bcryptStrength());
     }
 
     @Bean
