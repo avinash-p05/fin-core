@@ -1,6 +1,7 @@
 # Publishes the archify architecture page (.archify/architecture-*/fincore.html) to GitHub Pages.
 #
 # One-time setup: repository Settings → Pages → Build and deployment → Source: "GitHub Actions".
+# Live site: https://avinash-p05.github.io/fin-core/
 name: Architecture page
 
 on:
