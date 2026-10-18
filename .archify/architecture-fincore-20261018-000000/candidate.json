@@ -1,0 +1,411 @@
+{
+    "schema_version": 1,
+    "diagram_type": "architecture",
+    "meta": {
+        "title": "FinCore payment platform",
+        "subtitle": "React operations dashboard | Spring Boot modular monolith | PostgreSQL, Redis, Kafka | k6: ~1,000 payments/s on one laptop",
+        "output": ".archify/architecture-fincore-20261018-000000/fincore.html",
+        "quality_profile": "showcase"
+    },
+    "components": [
+        {
+            "id": "operator",
+            "type": "external",
+            "label": "Operations user",
+            "sublabel": "Analyst / operator",
+            "icon": "person",
+            "pos": [
+                40,
+                300
+            ],
+            "size": [
+                150,
+                64
+            ]
+        },
+        {
+            "id": "dashboard",
+            "type": "frontend",
+            "label": "React dashboard",
+            "sublabel": "Vite + TypeScript",
+            "icon": "frontend",
+            "pos": [
+                220,
+                300
+            ],
+            "size": [
+                160,
+                64
+            ]
+        },
+        {
+            "id": "nginx",
+            "type": "cloud",
+            "label": "nginx",
+            "sublabel": "Docker static host + /api proxy",
+            "icon": "cloud",
+            "pos": [
+                410,
+                300
+            ],
+            "size": [
+                175,
+                64
+            ]
+        },
+        {
+            "id": "api",
+            "type": "backend",
+            "label": "Spring Boot API",
+            "sublabel": "REST /api/v1 + Basic auth (dev)",
+            "icon": "backend",
+            "pos": [
+                615,
+                300
+            ],
+            "size": [
+                180,
+                70
+            ]
+        },
+        {
+            "id": "payment",
+            "type": "backend",
+            "label": "Payment orchestration",
+            "sublabel": "Idempotency, fraud gate, refunds",
+            "icon": "backend",
+            "pos": [
+                825,
+                300
+            ],
+            "size": [
+                220,
+                70
+            ]
+        },
+        {
+            "id": "fraud",
+            "type": "security",
+            "label": "Fraud screening",
+            "sublabel": "3 rules + analyst review",
+            "icon": "security",
+            "pos": [
+                825,
+                125
+            ],
+            "size": [
+                190,
+                70
+            ]
+        },
+        {
+            "id": "ledger",
+            "type": "backend",
+            "label": "Ledger + accounts",
+            "sublabel": "Ordered locks + double-entry",
+            "icon": "backend",
+            "pos": [
+                1075,
+                300
+            ],
+            "size": [
+                180,
+                70
+            ]
+        },
+        {
+            "id": "postgres",
+            "type": "database",
+            "label": "PostgreSQL",
+            "sublabel": "Payments, ledger, outbox, consumer state",
+            "icon": "database",
+            "pos": [
+                860,
+                595
+            ],
+            "size": [
+                380,
+                70
+            ]
+        },
+        {
+            "id": "redis",
+            "type": "database",
+            "label": "Redis",
+            "sublabel": "Lua INCR + TTL velocity",
+            "icon": "database",
+            "pos": [
+                400,
+                110
+            ],
+            "size": [
+                170,
+                64
+            ]
+        },
+        {
+            "id": "outbox",
+            "type": "backend",
+            "label": "Outbox relay",
+            "sublabel": "SKIP LOCKED poll, pipelined",
+            "icon": "backend",
+            "pos": [
+                1300,
+                440
+            ],
+            "size": [
+                180,
+                70
+            ]
+        },
+        {
+            "id": "kafka",
+            "type": "messagebus",
+            "label": "Kafka",
+            "sublabel": "payment-events, 3 partitions",
+            "icon": "messagebus",
+            "pos": [
+                1300,
+                595
+            ],
+            "size": [
+                180,
+                70
+            ]
+        },
+        {
+            "id": "consumer",
+            "type": "backend",
+            "label": "Notification consumer",
+            "sublabel": "Dedup, 3 threads, 3 retries",
+            "icon": "backend",
+            "pos": [
+                1540,
+                440
+            ],
+            "size": [
+                190,
+                70
+            ]
+        },
+        {
+            "id": "dlt",
+            "type": "messagebus",
+            "label": "Dead-letter topic",
+            "sublabel": "fincore.payment-events.DLT",
+            "icon": "messagebus",
+            "pos": [
+                1540,
+                595
+            ],
+            "size": [
+                190,
+                64
+            ]
+        }
+    ],
+    "boundaries": [
+        {
+            "kind": "region",
+            "label": "Docker Compose application stack",
+            "wraps": [
+                "nginx",
+                "api",
+                "payment",
+                "fraud",
+                "ledger",
+                "postgres",
+                "redis",
+                "outbox",
+                "kafka",
+                "consumer",
+                "dlt"
+            ]
+        },
+        {
+            "kind": "security-group",
+            "label": "Single Spring Boot runtime",
+            "wraps": [
+                "api",
+                "payment",
+                "fraud",
+                "ledger",
+                "outbox",
+                "consumer"
+            ]
+        }
+    ],
+    "connections": [
+        {
+            "id": "operator-dashboard",
+            "from": "operator",
+            "to": "dashboard",
+            "variant": "emphasis",
+            "label": "uses the dashboard"
+        },
+        {
+            "id": "dashboard-nginx",
+            "from": "dashboard",
+            "to": "nginx",
+            "variant": "emphasis",
+            "label": "HTTP /api calls"
+        },
+        {
+            "id": "nginx-api",
+            "from": "nginx",
+            "to": "api",
+            "variant": "emphasis",
+            "label": "reverse proxy /api"
+        },
+        {
+            "id": "api-payment",
+            "from": "api",
+            "to": "payment",
+            "variant": "emphasis",
+            "label": "create payment, refund"
+        },
+        {
+            "id": "api-fraud",
+            "from": "api",
+            "to": "fraud",
+            "variant": "default",
+            "label": "alert list + analyst review (ANALYST role)"
+        },
+        {
+            "id": "api-ledger",
+            "from": "api",
+            "to": "ledger",
+            "variant": "default",
+            "label": "ledger search + verification (reads)"
+        },
+        {
+            "id": "payment-fraud",
+            "from": "payment",
+            "to": "fraud",
+            "variant": "default",
+            "label": "score before any money moves"
+        },
+        {
+            "id": "fraud-redis",
+            "from": "fraud",
+            "to": "redis",
+            "variant": "security",
+            "label": "Lua INCR + PEXPIRE velocity counter"
+        },
+        {
+            "id": "fraud-postgres",
+            "from": "fraud",
+            "to": "postgres",
+            "variant": "dashed",
+            "label": "fraud alerts + beneficiary history"
+        },
+        {
+            "id": "payment-ledger",
+            "from": "payment",
+            "to": "ledger",
+            "variant": "emphasis",
+            "label": "lock accounts + post balanced entries"
+        },
+        {
+            "id": "ledger-postgres",
+            "from": "ledger",
+            "to": "postgres",
+            "variant": "emphasis",
+            "label": "balances + ledger entries (same transaction)"
+        },
+        {
+            "id": "payment-postgres",
+            "from": "payment",
+            "to": "postgres",
+            "variant": "dashed",
+            "label": "payment, idempotency key, outbox row (same transaction)"
+        },
+        {
+            "id": "postgres-outbox",
+            "from": "postgres",
+            "to": "outbox",
+            "variant": "dashed",
+            "label": "poll due rows FOR UPDATE SKIP LOCKED"
+        },
+        {
+            "id": "outbox-kafka",
+            "from": "outbox",
+            "to": "kafka",
+            "variant": "emphasis",
+            "label": "pipelined sends, at-least-once, key = payment id"
+        },
+        {
+            "id": "kafka-consumer",
+            "from": "kafka",
+            "to": "consumer",
+            "variant": "emphasis",
+            "label": "consume (3 listener threads)"
+        },
+        {
+            "id": "consumer-postgres",
+            "from": "consumer",
+            "to": "postgres",
+            "variant": "dashed",
+            "label": "processed_events + notifications (same transaction)"
+        },
+        {
+            "id": "consumer-dlt",
+            "from": "consumer",
+            "to": "dlt",
+            "variant": "dashed",
+            "label": "after 3 retries"
+        }
+    ],
+    "cards": [
+        {
+            "dot": "cyan",
+            "title": "Money correctness",
+            "items": [
+                "Fraud decision precedes balance changes",
+                "Accounts locked in a fixed order: no overdraft, no deadlock",
+                "Payment, ledger entries and outbox row commit in one PostgreSQL transaction",
+                "Double-entry and immutability enforced in application and database"
+            ]
+        },
+        {
+            "dot": "emerald",
+            "title": "Reliable events",
+            "items": [
+                "Relay claims outbox rows with SKIP LOCKED and pipelines Kafka sends",
+                "At-least-once delivery with exponential backoff; failures parked, never dropped",
+                "Consumer dedupes on processed_events in the same transaction as its effect",
+                "3 bounded retries, then fincore.payment-events.DLT"
+            ]
+        },
+        {
+            "dot": "rose",
+            "title": "Operational boundary",
+            "items": [
+                "HTTP Basic users are local-development authentication",
+                "Only ANALYST can approve or reject held payments",
+                "Redis down: payments are held for REVIEW, never auto-approved",
+                "Kafka is downstream of the payment commit"
+            ]
+        },
+        {
+            "dot": "violet",
+            "title": "Load test · k6 · one laptop",
+            "items": [
+                "~1,019 payments/s, p95 87 ms, 0 errors (50 VUs, 100 accounts, BCrypt 4)",
+                "~161 payments/s, p95 595 ms with default BCrypt 10: HTTP Basic hashes on every request",
+                "One hot account: ~265/s; 3,998 debits settled, 11,885 rejected, no overdraft",
+                "Outbox relay 133 → 2,800+ events/s after pipelining; consumer ~1,041 events/s"
+            ]
+        },
+        {
+            "dot": "orange",
+            "title": "Integrity after 211,878 payments",
+            "items": [
+                "Ledger verification VALID: 200,563 transactions, debits = credits",
+                "0 balance mismatches, 0 negative balances",
+                "199,993 completed = published = consumed; 0 duplicate notifications",
+                "65/65 automated tests on real PostgreSQL, Redis and Kafka"
+            ]
+        }
+    ]
+}

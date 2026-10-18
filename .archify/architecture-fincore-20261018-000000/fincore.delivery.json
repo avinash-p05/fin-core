@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "1e564fb4-a9b1-465b-9694-825afee7965e",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\candidate.json",
+  "output": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.html",
+  "specification": {
+    "sha256": "44253a8cb670416e409964dc92adb9b319c0558c14810e008f087996890e5870",
+    "bytes": 15984
+  },
+  "artifact": {
+    "sha256": "0f088a162f30d1d8974e056bd0ade214a45eff9fbc214dea9f268adca0b56338",
+    "bytes": 772092
+  }
+}

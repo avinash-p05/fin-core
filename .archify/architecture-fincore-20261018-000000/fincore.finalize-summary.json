@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "finalize",
+  "status": "fail",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\candidate.json",
+    "sha256": "44253a8cb670416e409964dc92adb9b319c0558c14810e008f087996890e5870",
+    "bytes": 15984
+  },
+  "artifact": {
+    "path": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.html",
+    "sha256": "0f088a162f30d1d8974e056bd0ade214a45eff9fbc214dea9f268adca0b56338",
+    "bytes": 772092
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "fail"
+  },
+  "failedStage": "browser-check",
+  "diagnostics": [
+    {
+      "code": "viewer/evidence-path-conflict",
+      "severity": "error",
+      "message": "browser-check will not replace the existing unowned evidence path \"D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.browser-check.json\".",
+      "subject": {
+        "artifact": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.html",
+        "evidencePath": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.browser-check.json"
+      },
+      "evidence": {
+        "reason": {
+          "code": "ownership-artifact-mismatch"
+        }
+      },
+      "supportedFixes": [
+        "move the conflicting file aside, or choose a separate --out-dir, then rerun browser-check"
+      ]
+    }
+  ],
+  "diagnosticSummary": {
+    "total": 1,
+    "shown": 1,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.finalize.json",
+    "summaryReceipt": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.finalize-summary.json",
+    "browserCheckReceipt": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.browser-check.json"
+  },
+  "update": {
+    "status": "unavailable",
+    "installedVersion": null,
+    "availableVersion": null,
+    "releaseNotes": null,
+    "checkedAt": null,
+    "source": null,
+    "noticeRequired": false,
+    "noticeText": null,
+    "reason": "cache-unavailable"
+  },
+  "visualReview": "not-requested",
+  "durationMs": 2367
+}

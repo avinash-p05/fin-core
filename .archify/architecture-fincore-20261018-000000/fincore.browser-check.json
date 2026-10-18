@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "browser-check",
+  "evidenceKind": "automated-browser",
+  "status": "fail",
+  "visualReview": "not-requested",
+  "provenance": "current",
+  "deliveryReceiptId": "af889a54-a826-4ff0-b79c-2c4cf7b9a417",
+  "artifact": {
+    "path": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.html",
+    "sha256": "029509a249340d162a46af6723152c0f41360af0f71129b2ccd62ce76ad44c44",
+    "bytes": 793614
+  },
+  "state": {
+    "detail": "read",
+    "motion": "still"
+  },
+  "chrome": {
+    "status": "available",
+    "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/browser-check-runtime",
+      "severity": "error",
+      "message": "browser-check could not complete its Chrome inspection.",
+      "subject": {
+        "artifact": "D:\\FinCore\\.archify\\architecture-fincore-20261018-000000\\fincore.html"
+      },
+      "evidence": {
+        "reason": "Chrome DevTools write pipe failed: stream closed\nChrome process: still running.\nChrome stderr:\n[33912:26412:1018/115630.917:ERROR:components\\os_crypt\\async\\browser\\os_crypt_win.cc:63] Failed to encrypt: The system cannot find the file specified. (0x2)\r\n[33912:34464:1018/115630.954:ERROR:chrome\\installer\\util\\google_update_settings_win.cc:270] Failed opening key Software\\Google\\Update\\ClientStateMedium\\{8A69D345-D564-463c-AFF1-A69D9E530F96} to set usagestats; result: 5\r\n[33912:23768:1018/115631.036:ERROR:components\\password_manager\\core\\browser\\password_store\\login_database_async_helper.cc:100] Encryption is not available.\r\n[33912:45376:1018/115631.040:ERROR:components\\password_manager\\core\\browser\\password_store\\login_database_async_helper.cc:100] Encryption is not available.\r\n[33912:26412:1018/115631.105:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:39848:1018/115631.106:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\Asus\\AppData\\Local\\Temp\\archify-visual-check-profile-6f6W9B\\GPUPersistentCache\\DawnGraphiteCache\\NR2GNA44OGQUBFRRNDBXIX2VC7JXKYAS\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[33912:26412:1018/115631.143:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:26412:1018/115631.155:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:34464:1018/115631.155:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\Asus\\AppData\\Local\\Temp\\archify-visual-check-profile-6f6W9B\\GPUPersistentCache\\DawnGraphiteCache\\NR2GNA44OGQUBFRRNDBXIX2VC7JXKYAS\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[33912:29636:1018/115631.165:ERROR:services\\device\\public\\cpp\\geolocation\\system_geolocation_source_win.cc:124] Failed to create IAppCapability: Access is denied. (0x80070005)\r\n[33912:26412:1018/115631.167:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:26412:1018/115631.179:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:45868:1018/115631.179:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\Asus\\AppData\\Local\\Temp\\archify-visual-check-profile-6f6W9B\\GPUPersistentCache\\DawnGraphiteCache\\NR2GNA44OGQUBFRRNDBXIX2VC7JXKYAS\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[33912:26412:1018/115631.189:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:26412:1018/115631.189:FATAL:content\\browser\\gpu\\gpu_data_manager_impl_private.cc:389] GPU process isn't usable. Goodbye.\nChrome transport: Node v22.23.3, libuv 1.51.0, win32; pid=33912, exitCode=null, signalCode=null.\nChrome read pipe: readable=true, ended=false, destroyed=false, receivedBytes=1328, messages=3, bufferedBytes=0.\nChrome write pipe: writable=false, ended=true, destroyed=true, completedWrites=3, writtenBytes=255, bufferedBytes=0."
+      },
+      "supportedFixes": [
+        "resolve the reported Chrome inspection error, then rerun browser-check"
+      ]
+    }
+  ],
+  "containment": {
+    "status": "fail",
+    "policy": "fit-or-reader-declared-readable-vertical-scroll",
+    "viewports": []
+  },
+  "themeStates": {
+    "status": "fail",
+    "viewports": []
+  },
+  "readability": {
+    "status": "fail",
+    "minimumProjectedNodeTextPx": 6,
+    "viewports": []
+  },
+  "viewerChrome": {
+    "status": "fail",
+    "viewports": []
+  },
+  "captures": {
+    "status": "not-requested",
+    "screenshots": [],
+    "contactSheet": null
+  },
+  "sidecars": {
+    "receipt": "fincore.browser-check.json",
+    "files": []
+  },
+  "error": "Chrome DevTools write pipe failed: stream closed\nChrome process: still running.\nChrome stderr:\n[33912:26412:1018/115630.917:ERROR:components\\os_crypt\\async\\browser\\os_crypt_win.cc:63] Failed to encrypt: The system cannot find the file specified. (0x2)\r\n[33912:34464:1018/115630.954:ERROR:chrome\\installer\\util\\google_update_settings_win.cc:270] Failed opening key Software\\Google\\Update\\ClientStateMedium\\{8A69D345-D564-463c-AFF1-A69D9E530F96} to set usagestats; result: 5\r\n[33912:23768:1018/115631.036:ERROR:components\\password_manager\\core\\browser\\password_store\\login_database_async_helper.cc:100] Encryption is not available.\r\n[33912:45376:1018/115631.040:ERROR:components\\password_manager\\core\\browser\\password_store\\login_database_async_helper.cc:100] Encryption is not available.\r\n[33912:26412:1018/115631.105:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:39848:1018/115631.106:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\Asus\\AppData\\Local\\Temp\\archify-visual-check-profile-6f6W9B\\GPUPersistentCache\\DawnGraphiteCache\\NR2GNA44OGQUBFRRNDBXIX2VC7JXKYAS\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[33912:26412:1018/115631.143:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:26412:1018/115631.155:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:34464:1018/115631.155:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\Asus\\AppData\\Local\\Temp\\archify-visual-check-profile-6f6W9B\\GPUPersistentCache\\DawnGraphiteCache\\NR2GNA44OGQUBFRRNDBXIX2VC7JXKYAS\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[33912:29636:1018/115631.165:ERROR:services\\device\\public\\cpp\\geolocation\\system_geolocation_source_win.cc:124] Failed to create IAppCapability: Access is denied. (0x80070005)\r\n[33912:26412:1018/115631.167:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:26412:1018/115631.179:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:45868:1018/115631.179:ERROR:components\\viz\\host\\persistent_cache_sandboxed_file_factory.cc:153] Failed to open persistent cache files in directory \"C:\\Users\\Asus\\AppData\\Local\\Temp\\archify-visual-check-profile-6f6W9B\\GPUPersistentCache\\DawnGraphiteCache\\NR2GNA44OGQUBFRRNDBXIX2VC7JXKYAS\", error: 0: The process cannot access the file because it is being used by another process. (0x20)\r\n[33912:26412:1018/115631.189:ERROR:content\\browser\\gpu\\gpu_process_host.cc:1043] GPU process exited unexpectedly: exit_code=-1073741790\r\n[33912:26412:1018/115631.189:FATAL:content\\browser\\gpu\\gpu_data_manager_impl_private.cc:389] GPU process isn't usable. Goodbye.\nChrome transport: Node v22.23.3, libuv 1.51.0, win32; pid=33912, exitCode=null, signalCode=null.\nChrome read pipe: readable=true, ended=false, destroyed=false, receivedBytes=1328, messages=3, bufferedBytes=0.\nChrome write pipe: writable=false, ended=true, destroyed=true, completedWrites=3, writtenBytes=255, bufferedBytes=0."
+}

@@ -1,0 +1,61 @@
+# Publishes the archify architecture page (.archify/architecture-*/fincore.html) to GitHub Pages.
+#
+# One-time setup: repository Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Architecture page
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".archify/**"
+      - ".github/workflows/architecture-pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; a newer push replaces a queued one, but never cancels a running deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Assemble site
+        run: |
+          set -euo pipefail
+          # Newest export wins: directories are named architecture-<name>-<yyyymmdd>-<hhmmss>.
+          page="$(find .archify -maxdepth 2 -path '.archify/architecture-*/fincore.html' | sort | tail -n 1)"
+          if [ ! -s "$page" ]; then
+            echo "::error::Architecture page not found or empty: $page"
+            exit 1
+          fi
+          grep -qi '<meta charset="UTF-8"' "$page" || { echo "::error::$page is missing a UTF-8 charset"; exit 1; }
+          grep -q 'data-edge-id=' "$page" || { echo "::error::$page contains no diagram edges"; exit 1; }
+
+          mkdir -p _site
+          cp "$page" _site/index.html
+          touch _site/.nojekyll   # serve the file as-is, no Jekyll processing
+          echo "Publishing $page ($(wc -c < "$page") bytes)" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
