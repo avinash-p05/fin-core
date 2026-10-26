@@ -1,22 +1,29 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
-import { SessionProvider, useSession } from './services/session'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import { Layout } from './components/Layout'
 import { LoginPage } from './pages/LoginPage'
-import { OverviewPage } from './pages/OverviewPage'
-import { SimulatorPage } from './pages/SimulatorPage'
-import { LedgerExplorerPage } from './pages/LedgerExplorerPage'
-import { FraudMonitoringPage } from './pages/FraudMonitoringPage'
+import { DashboardPage } from './pages/DashboardPage'
+import { AccountsPage } from './pages/AccountsPage'
+import { PaymentsPage } from './pages/PaymentsPage'
+import { NewPaymentPage } from './pages/NewPaymentPage'
+import { LedgerPage } from './pages/LedgerPage'
+import { FraudAlertsPage } from './pages/FraudAlertsPage'
 
-function Routed() {
-  const { me } = useSession()
-  if (!me) return <LoginPage />
+function AppRoutes() {
+  const { user } = useAuth()
+
+  // Not signed in: show only the login page.
+  if (!user) return <LoginPage />
+
   return (
     <Routes>
       <Route element={<Layout />}>
-        <Route index element={<OverviewPage />} />
-        <Route path="simulator" element={<SimulatorPage />} />
-        <Route path="ledger" element={<LedgerExplorerPage />} />
-        <Route path="fraud" element={<FraudMonitoringPage />} />
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/accounts" element={<AccountsPage />} />
+        <Route path="/payments" element={<PaymentsPage />} />
+        <Route path="/payments/new" element={<NewPaymentPage />} />
+        <Route path="/ledger" element={<LedgerPage />} />
+        <Route path="/fraud" element={<FraudAlertsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
@@ -26,9 +33,9 @@ function Routed() {
 export function App() {
   return (
     <BrowserRouter>
-      <SessionProvider>
-        <Routed />
-      </SessionProvider>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
     </BrowserRouter>
   )
 }

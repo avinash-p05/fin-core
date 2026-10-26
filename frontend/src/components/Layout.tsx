@@ -1,52 +1,65 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { useSession } from '../services/session'
+import { useAuth } from '../context/AuthContext'
 
-const links = [
-  { to: '/', label: 'Overview', end: true },
-  { to: '/simulator', label: 'Payment Simulator' },
-  { to: '/ledger', label: 'Ledger Explorer' },
-  { to: '/fraud', label: 'Fraud Monitoring' },
+const navItems = [
+  { to: '/', label: 'Dashboard' },
+  { to: '/accounts', label: 'Accounts' },
+  { to: '/payments', label: 'Transactions' },
+  { to: '/payments/new', label: 'New Payment' },
+  { to: '/ledger', label: 'Ledger' },
+  { to: '/fraud', label: 'Fraud Alerts' },
 ]
 
 export function Layout() {
-  const { me, logout } = useSession()
+  const { user, logout } = useAuth()
+
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <span className="rounded bg-indigo-600 px-2 py-1 text-sm font-bold text-white">FinCore</span>
-            <span className="text-sm text-slate-500">Operations dashboard · simulated INR payments</span>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-slate-600">
-              {me?.username} <span className="text-slate-400">({me?.roles.join(', ')})</span>
-            </span>
-            <button onClick={logout} className="text-indigo-600 hover:underline">
-              Sign out
-            </button>
-          </div>
-        </div>
-        <nav className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-4">
-          {links.map((l) => (
+    <div className="flex min-h-screen bg-gray-100">
+      {/* Sidebar */}
+      <aside className="hidden w-56 shrink-0 bg-gray-900 text-gray-300 md:block">
+        <div className="px-6 py-5 text-lg font-semibold text-white">FinCore</div>
+        <nav className="space-y-1 px-3">
+          {navItems.map((item) => (
             <NavLink
-              key={l.to}
-              to={l.to}
-              end={l.end}
+              key={item.to}
+              to={item.to}
+              end
               className={({ isActive }) =>
-                `whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium ${
-                  isActive ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'
-                }`
+                `block rounded-md px-3 py-2 text-sm ${isActive ? 'bg-gray-800 text-white' : 'hover:bg-gray-800 hover:text-white'}`
               }
             >
-              {l.label}
+              {item.label}
             </NavLink>
           ))}
         </nav>
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        <Outlet />
-      </main>
+      </aside>
+
+      {/* min-w-0 lets this column shrink so wide tables scroll inside their card, not the whole page. */}
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* Top bar */}
+        <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3">
+          {/* On small screens the sidebar is hidden, so show the links here instead. */}
+          <nav className="flex gap-3 overflow-x-auto text-sm md:hidden">
+            {navItems.map((item) => (
+              <NavLink key={item.to} to={item.to} end className={({ isActive }) => (isActive ? 'font-medium text-blue-600' : 'text-gray-600')}>
+                {item.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-4 text-sm">
+            <span className="text-gray-600">
+              {user?.username} <span className="text-gray-400">({user?.roles.join(', ')})</span>
+            </span>
+            <button onClick={logout} className="text-blue-600 hover:underline">
+              Sign out
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   )
 }

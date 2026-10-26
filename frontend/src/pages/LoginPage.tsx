@@ -1,45 +1,51 @@
 import { useState, type FormEvent } from 'react'
-import { useSession } from '../services/session'
-import { Button, ErrorMessage, Field, inputClass } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
+import { Button, ErrorMessage, Label, inputClass } from '../components/ui'
 
 export function LoginPage() {
-  const { login } = useSession()
-  const [username, setUsername] = useState('analyst')
+  const { login } = useAuth()
+  const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<unknown>()
-  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
+  const [submitting, setSubmitting] = useState(false)
 
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    setBusy(true)
-    setError(undefined)
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault()
+    setSubmitting(true)
+    setError(null)
     try {
       await login(username, password)
     } catch (err) {
       setError(err)
     } finally {
-      setBusy(false)
+      setSubmitting(false)
     }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-900">FinCore operations</h1>
-          <p className="mt-1 text-xs text-slate-500">
-            Local-development sign-in (HTTP Basic). Users and passwords are configured on the backend; see README.
-          </p>
-        </div>
-        <Field label="Username">
-          <input className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" />
-        </Field>
-        <Field label="Password">
-          <input className={inputClass} type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" />
-        </Field>
-        {error !== undefined && <ErrorMessage error={error} />}
-        <Button type="submit" className="w-full" disabled={busy || !username || !password}>
-          {busy ? 'Signing in…' : 'Sign in'}
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-sm space-y-4 rounded-lg border border-gray-200 bg-white p-8 shadow-sm">
+        <h1 className="text-center text-2xl font-semibold text-gray-900">FinCore</h1>
+        <p className="text-center text-sm text-gray-500">Sign in to continue</p>
+
+        <Label text="Username">
+          <input className={inputClass} value={username} onChange={(e) => setUsername(e.target.value)} autoComplete="username" required />
+        </Label>
+        <Label text="Password">
+          <input
+            className={inputClass}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            required
+          />
+        </Label>
+
+        {error !== null && <ErrorMessage error={error} />}
+
+        <Button type="submit" className="w-full" disabled={submitting}>
+          {submitting ? 'Signing in...' : 'Sign in'}
         </Button>
       </form>
     </div>

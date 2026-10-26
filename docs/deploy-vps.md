@@ -202,7 +202,7 @@ All services should show `running` / `healthy` (backend takes ~1 minute after Ka
 - **[server]** `fc logs caddy | grep -i certificate` should show the certificate was obtained.
 - **[server]** `fc exec backend wget -qO- http://localhost:8080/actuator/health` returns `{"status":"UP"...}`.
 - **[laptop]** open `https://fincore.YOUR_IP.sslip.io` → padlock in the browser → log in as
-  `operator` / your operator password → run a payment in the Simulator and check the Ledger page.
+  `operator` / your operator password → send a payment from New Payment and check the Ledger page.
 - **[server]** `docker stats --no-stream` shows memory per container (FinCore should total about 2–3 GB).
 
 ---
