@@ -188,9 +188,9 @@ docker compose -f infrastructure/docker-compose.prod.yml --env-file infrastructu
 Tip: avoid retyping the long flags with an alias in `~/.bashrc`:
 
 ```bash
-echo "alias fc='docker compose -f ~/fin-core/infrastructure/docker-compose.prod.yml --env-file ~/fin-core/infrastructure/.env.prod'" >> ~/.bashrc
+echo "alias fin='docker compose -f ~/fin-core/infrastructure/docker-compose.prod.yml --env-file ~/fin-core/infrastructure/.env.prod'" >> ~/.bashrc
 source ~/.bashrc
-fc ps
+fin ps
 ```
 
 All services should show `running` / `healthy` (backend takes ~1 minute after Kafka is healthy).
@@ -199,8 +199,8 @@ All services should show `running` / `healthy` (backend takes ~1 minute after Ka
 
 ## 11. Verify [laptop + server]
 
-- **[server]** `fc logs caddy | grep -i certificate` should show the certificate was obtained.
-- **[server]** `fc exec backend wget -qO- http://localhost:8080/actuator/health` returns `{"status":"UP"...}`.
+- **[server]** `fin logs caddy | grep -i certificate` should show the certificate was obtained.
+- **[server]** `fin exec backend wget -qO- http://localhost:8080/actuator/health` returns `{"status":"UP"...}`.
 - **[laptop]** open `https://fincore.YOUR_IP.sslip.io` → padlock in the browser → log in as
   `operator` / your operator password → send a payment from New Payment and check the Ledger page.
 - **[server]** `docker stats --no-stream` shows memory per container (FinCore should total about 2–3 GB).
@@ -211,13 +211,13 @@ All services should show `running` / `healthy` (backend takes ~1 minute after Ka
 
 | Task | Command |
 |---|---|
-| Status | `fc ps` |
-| Logs (last 100 lines, follow) | `fc logs -f --tail=100 backend` |
-| Restart one service | `fc restart backend` |
-| Deploy new code | `cd ~/fin-core && git pull && fc up -d --build` |
-| Stop everything | `fc down` (data kept in volumes) |
-| Wipe data and reseed | `fc down -v` then `fc up -d` (**deletes the database**) |
-| DB backup | `fc exec -T postgres pg_dump -U fincore fincore > ~/fincore-$(date +%F).sql` |
+| Status | `fin ps` |
+| Logs (last 100 lines, follow) | `fin logs -f --tail=100 backend` |
+| Restart one service | `fin restart backend` |
+| Deploy new code | `cd ~/fin-core && git pull && fin up -d --build` |
+| Stop everything | `fin down` (data kept in volumes) |
+| Wipe data and reseed | `fin down -v` then `fin up -d` (**deletes the database**) |
+| DB backup | `fin exec -T postgres pg_dump -U fincore fincore > ~/fincore-$(date +%F).sql` |
 | Free disk from old images | `docker image prune -f` |
 | Resource usage | `htop`, `docker stats`, `df -h` |
 
@@ -225,9 +225,9 @@ All services should show `running` / `healthy` (backend takes ~1 minute after Ka
 
 ## 13. Troubleshooting
 
-- **Browser can't connect / no certificate:** `sudo ufw status` must allow 80 and 443; `fc logs caddy`.
+- **Browser can't connect / no certificate:** `sudo ufw status` must allow 80 and 443; `fin logs caddy`.
   Let's Encrypt needs port 80 reachable. Check Contabo's panel firewall isn't blocking it.
-- **Backend keeps restarting:** `fc logs backend`. Usually Postgres or Kafka not healthy yet, or a typo
+- **Backend keeps restarting:** `fin logs backend`. Usually Postgres or Kafka not healthy yet, or a typo
   in `.env.prod`.
 - **Container killed (exit 137):** out of memory. `docker stats`, then raise that service's `mem_limit`.
 - **Locked out of SSH:** use the VNC/console access in the Contabo customer panel to log in and fix
@@ -238,4 +238,4 @@ All services should show `running` / `healthy` (backend takes ~1 minute after Ka
 ## 14. Later: your own domain
 
 Buy a domain, add an **A record** `fincore` → `YOUR_IP`, set `FINCORE_DOMAIN=fincore.yourdomain.dev` in
-`.env.prod`, then `fc up -d`. Caddy fetches the new certificate automatically.
+`.env.prod`, then `fin up -d`. Caddy fetches the new certificate automatically.
