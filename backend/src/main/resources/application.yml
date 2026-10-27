@@ -50,6 +50,9 @@ spring:
 
 server:
   port: ${FINCORE_PORT:8080}
+  # Trust X-Forwarded-For from internal proxies (Caddy, nginx) so request.getRemoteAddr() is the real
+  # client IP. Tomcat only trusts private-network addresses, so clients cannot spoof it.
+  forward-headers-strategy: native
   error:
     include-stacktrace: never
 
@@ -110,3 +113,5 @@ fincore:
     analyst-password: ${FINCORE_ANALYST_PASSWORD:analyst-dev-password}
     allowed-origins: ${FINCORE_ALLOWED_ORIGINS:http://localhost:5173}
     bcrypt-strength: ${FINCORE_BCRYPT_STRENGTH:10}
+    login-max-failures: ${FINCORE_LOGIN_MAX_FAILURES:10}
+    login-failure-window: 15m

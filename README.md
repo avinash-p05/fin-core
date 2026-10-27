@@ -140,6 +140,7 @@ Then open http://localhost:5173.
 | `FINCORE_DEMO_SEED` | `false` | Seed demo customers and accounts into an empty database |
 | `FINCORE_OPERATOR_USER` / `FINCORE_OPERATOR_PASSWORD` | `operator` / `operator-dev-password` | Dev user with the OPERATOR role |
 | `FINCORE_ANALYST_USER` / `FINCORE_ANALYST_PASSWORD` | `analyst` / `analyst-dev-password` | Dev user with the ANALYST and OPERATOR roles |
+| `FINCORE_LOGIN_MAX_FAILURES` | `10` | Failed sign-ins per IP in 15 minutes before HTTP 429 |
 | `FINCORE_ALLOWED_ORIGINS` | `http://localhost:5173` | CORS origins, comma separated |
 | `FINCORE_PORT` | `8080` | HTTP port |
 
@@ -339,7 +340,10 @@ caveats and raw output are in [loadtest/RESULTS.md](loadtest/RESULTS.md).
 - **Opening balances lock one row.** All of them lock the system funding account, which is fine at
   this scale.
 - **The fraud alert list makes one extra query per row** to load the payment summary (N+1).
-- **Single currency (INR), no fees, FX, scheduled payments or statements.** No rate limiting.
+- **Single currency (INR), no fees, FX, scheduled payments or statements.**
+- **Rate limiting is basic.** nginx limits each IP to 20 API requests/s (bursts of 40), and the backend
+  blocks an IP for 15 minutes after 10 failed sign-ins (Redis counter; fails open if Redis is down).
+  There are no per-user quotas.
 - **Load-test numbers are from one laptop** with every component co-located. They are not production capacity figures.
 
 ## Further reading

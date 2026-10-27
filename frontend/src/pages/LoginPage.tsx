@@ -1,22 +1,31 @@
 import { useState, type FormEvent } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Button, ErrorMessage, Label, inputClass } from '../components/ui'
+import { ApiError } from '../services/api'
+import { Button, Label, inputClass } from '../components/ui'
+
+/** Friendly message for a failed sign-in. */
+function loginErrorMessage(err: unknown) {
+  if (err instanceof ApiError && err.status === 401) return 'Invalid username or password.'
+  if (err instanceof ApiError && err.status === 429) return 'Too many attempts. Please wait a minute and try again.'
+  return 'Could not sign in. Please try again.'
+}
 
 export function LoginPage() {
   const { login } = useAuth()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<unknown>(null)
+  const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
     setSubmitting(true)
-    setError(null)
+    setError('')
     try {
       await login(username, password)
     } catch (err) {
-      setError(err)
+      setError(loginErrorMessage(err))
+      setPassword('')
     } finally {
       setSubmitting(false)
     }
@@ -42,7 +51,7 @@ export function LoginPage() {
           />
         </Label>
 
-        {error !== null && <ErrorMessage error={error} />}
+        {error && <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
         <Button type="submit" className="w-full" disabled={submitting}>
           {submitting ? 'Signing in...' : 'Sign in'}

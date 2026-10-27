@@ -1,5 +1,6 @@
 package com.fincore.config;
 
+import java.time.Duration;
 import java.util.List;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -18,5 +19,8 @@ public record SecurityProperties(
         List<String> allowedOrigins,
         // BCrypt cost factor (2^n rounds). HTTP Basic re-verifies the password on EVERY request, so this
         // dominates request latency; the load-test profile lowers it to isolate the payment path.
-        @DefaultValue("10") int bcryptStrength) {
+        @DefaultValue("10") int bcryptStrength,
+        // Failed sign-ins allowed per client IP within the window before further attempts get HTTP 429.
+        @DefaultValue("10") int loginMaxFailures,
+        @DefaultValue("15m") Duration loginFailureWindow) {
 }

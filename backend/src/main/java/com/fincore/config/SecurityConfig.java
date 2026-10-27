@@ -14,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -33,7 +34,8 @@ public class SecurityConfig {
     public static final String ROLE_ANALYST = "ANALYST";
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, LoginAttemptLimiter loginLimiter) throws Exception {
+        JsonSecurityErrorHandler errors = new JsonSecurityErrorHandler();
         http
                 // Stateless API authenticated by an Authorization header on every request; no cookies, so no CSRF surface.
                 .csrf(csrf -> csrf.disable())
@@ -46,7 +48,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/fraud/alerts/**").hasRole(ROLE_ANALYST)
                         .requestMatchers("/api/**").hasAnyRole(ROLE_OPERATOR, ROLE_ANALYST)
                         .anyRequest().authenticated())
-                .httpBasic(Customizer.withDefaults());
+                // JSON 401/403 without "WWW-Authenticate: Basic", so browsers never pop up their own login dialog.
+                .httpBasic(basic -> basic.authenticationEntryPoint(errors))
+                .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
+                // Brute-force protection: blocks an IP after repeated failed sign-ins (see LoginRateLimitFilter).
+                .addFilterBefore(new LoginRateLimitFilter(loginLimiter), BasicAuthenticationFilter.class);
         return http.build();
     }
 

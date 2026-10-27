@@ -2,7 +2,9 @@ package com.fincore.account;
 
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -81,7 +83,19 @@ class AccountApiTest extends IntegrationTest {
     @Test
     void requiresAuthentication() throws Exception {
         mvc.perform(get("/api/v1/accounts")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/v1/accounts").with(httpBasic("operator", "wrong"))).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/accounts").with(httpBasic("operator", "wrong")))
+                .andExpect(status().isUnauthorized())
+                // No Basic challenge header, so browsers don't open their native login dialog.
+                .andExpect(header().doesNotExist("WWW-Authenticate"))
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void operatorCannotReviewFraudAlerts() throws Exception {
+        mvc.perform(patch("/api/v1/fraud/alerts/{id}/status", UUID.randomUUID()).with(OPERATOR)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"CLOSED\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
 
     @Test
