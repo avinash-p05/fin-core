@@ -5,5 +5,7 @@ services:
     environment:
       FINCORE_FRAUD_VELOCITY_MAXTRANSACTIONS: "1000000"
       FINCORE_DEMO_SEED: "false"
+      # k6 sends ~1,000 requests/s from one IP; lift the per-IP API limit for the benchmark.
+      FINCORE_API_REQUESTS_PER_SECOND: "1000000"
       # Only for the "payment path" run: cheaper password hashing (default 10). See loadtest/RESULTS.md.
       FINCORE_BCRYPT_STRENGTH: ${FINCORE_BCRYPT_STRENGTH:-10}

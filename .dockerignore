@@ -1,0 +1,14 @@
+# Build context is the repo root (see backend/Dockerfile). Send only what the image build needs.
+.git
+.github
+.archify
+.claude
+docs
+loadtest
+infrastructure
+**/node_modules
+**/target
+frontend/dist
+backend/src/main/resources/static
+*.log
+.env*

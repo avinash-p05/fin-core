@@ -28,7 +28,9 @@ import org.springframework.jdbc.core.JdbcTemplate;
         // Concurrency tests send up to 16 payments per source account; keep velocity out of their way.
         "fincore.fraud.velocity.max-transactions=" + IntegrationTest.TEST_VELOCITY_MAX,
         // Tests drive the outbox publisher explicitly instead of relying on the scheduler's timing.
-        "fincore.outbox.publisher-enabled=false"
+        "fincore.outbox.publisher-enabled=false",
+        // MockMvc requests all come from 127.0.0.1; ApiRateLimitFilterTest covers the limit itself.
+        "fincore.security.api-requests-per-second=100000"
 })
 @Import(TestcontainersConfig.class)
 public abstract class IntegrationTest {

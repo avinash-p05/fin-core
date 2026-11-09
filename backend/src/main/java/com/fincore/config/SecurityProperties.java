@@ -22,5 +22,7 @@ public record SecurityProperties(
         @DefaultValue("10") int bcryptStrength,
         // Failed sign-ins allowed per client IP within the window before further attempts get HTTP 429.
         @DefaultValue("10") int loginMaxFailures,
-        @DefaultValue("15m") Duration loginFailureWindow) {
+        @DefaultValue("15m") Duration loginFailureWindow,
+        // Requests per second allowed per client IP on /api/** before HTTP 429.
+        @DefaultValue("40") int apiRequestsPerSecond) {
 }

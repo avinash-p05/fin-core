@@ -2,7 +2,7 @@
 #
 #   Infrastructure only (run the backend from your IDE / ./mvnw):
 #     docker compose -f infrastructure/docker-compose.yml up -d postgres redis kafka
-#   Everything (backend + dashboard at http://localhost:3000):
+#   Everything (one FinCore container: dashboard at http://localhost:8080, API at /api):
 #     docker compose -f infrastructure/docker-compose.yml up -d --build
 
 name: fincore
@@ -60,7 +60,9 @@ services:
 
   backend:
     build:
-      context: ../backend
+      # Repo root: the image also builds the React dashboard (see backend/Dockerfile).
+      context: ..
+      dockerfile: backend/Dockerfile
     environment:
       FINCORE_DB_URL: jdbc:postgresql://postgres:5432/fincore
       FINCORE_DB_USER: fincore
@@ -68,7 +70,8 @@ services:
       FINCORE_REDIS_HOST: redis
       FINCORE_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       FINCORE_DEMO_SEED: "true"
-      FINCORE_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:5173
+      # Only the Vite dev server (npm run dev) is cross-origin; the bundled dashboard is same-origin.
+      FINCORE_ALLOWED_ORIGINS: http://localhost:5173
       # Dev-only credentials; override for anything shared.
       FINCORE_OPERATOR_PASSWORD: ${FINCORE_OPERATOR_PASSWORD:-operator-dev-password}
       FINCORE_ANALYST_PASSWORD: ${FINCORE_ANALYST_PASSWORD:-analyst-dev-password}
@@ -86,15 +89,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 30
-
-  frontend:
-    build:
-      context: ../frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      backend:
-        condition: service_healthy
 
 volumes:
   postgres-data:

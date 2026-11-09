@@ -30,7 +30,7 @@ What it does:
 
 ```mermaid
 flowchart LR
-    UI["React dashboard<br/>(Vite, nginx in Docker)"] -->|"/api (HTTP Basic, dev only)"| API
+    UI["React dashboard<br/>(Vite build, served by Spring Boot)"] -->|"/api (HTTP Basic, dev only)"| API
 
     subgraph APP["Spring Boot modular monolith"]
         API["REST controllers<br/>DTOs + validation + ProblemDetail"]
@@ -68,7 +68,7 @@ backend/          Spring Boot 4.1 / Java 21 application (Maven wrapper, Dockerfi
   src/main/java/com/fincore/
     account/ customer/ payment/ ledger/ fraud/ idempotency/ outbox/ notification/ dashboard/ config/ common/
   src/main/resources/db/migration/   Flyway V1..V4
-frontend/         React 19 + Vite 8 + TypeScript + Tailwind 4 dashboard (Dockerfile, nginx.conf)
+frontend/         React 19 + Vite 8 + TypeScript + Tailwind 4 dashboard (bundled into the backend image)
 infrastructure/   docker-compose.yml (PostgreSQL, Redis, Kafka, backend, frontend)
 docs/             architecture.md, interview-guide.md
 PROGRESS.md       Phase-by-phase log with actual test results
@@ -88,10 +88,15 @@ PROGRESS.md       Phase-by-phase log with actual test results
 docker compose -f infrastructure/docker-compose.yml up -d --build
 ```
 
-- Dashboard: http://localhost:3000. Sign in as `analyst` / `analyst-dev-password`, or as
+- Dashboard: http://localhost:8080. Sign in as `analyst` / `analyst-dev-password`, or as
   `operator` / `operator-dev-password`, who can't make review decisions.
-- API: http://localhost:8080. Swagger UI is at http://localhost:8080/swagger-ui.html and the
+- API: http://localhost:8080/api/v1. Swagger UI is at http://localhost:8080/swagger-ui.html and the
   OpenAPI JSON at `/v3/api-docs`.
+
+FinCore ships as **one container**: `backend/Dockerfile` (build context = repo root) builds the React
+dashboard with Node, copies it into the jar's `static/` folder and builds the Spring Boot jar. Spring
+serves the dashboard at `/` (client-side routes such as `/payments/new` forward to `index.html`) and
+the API at `/api` on port 8080. Build it on its own with `docker build -f backend/Dockerfile -t fincore .`
 - Health: http://localhost:8080/actuator/health
 
 The Compose backend sets `FINCORE_DEMO_SEED=true`, which creates four demo customers and accounts
@@ -141,6 +146,7 @@ Then open http://localhost:5173.
 | `FINCORE_OPERATOR_USER` / `FINCORE_OPERATOR_PASSWORD` | `operator` / `operator-dev-password` | Dev user with the OPERATOR role |
 | `FINCORE_ANALYST_USER` / `FINCORE_ANALYST_PASSWORD` | `analyst` / `analyst-dev-password` | Dev user with the ANALYST and OPERATOR roles |
 | `FINCORE_LOGIN_MAX_FAILURES` | `10` | Failed sign-ins per IP in 15 minutes before HTTP 429 |
+| `FINCORE_API_REQUESTS_PER_SECOND` | `40` | `/api` requests per second per IP before HTTP 429 |
 | `FINCORE_ALLOWED_ORIGINS` | `http://localhost:5173` | CORS origins, comma separated |
 | `FINCORE_PORT` | `8080` | HTTP port |
 
@@ -341,9 +347,9 @@ caveats and raw output are in [loadtest/RESULTS.md](loadtest/RESULTS.md).
   this scale.
 - **The fraud alert list makes one extra query per row** to load the payment summary (N+1).
 - **Single currency (INR), no fees, FX, scheduled payments or statements.**
-- **Rate limiting is basic.** nginx limits each IP to 20 API requests/s (bursts of 40), and the backend
-  blocks an IP for 15 minutes after 10 failed sign-ins (Redis counter; fails open if Redis is down).
-  There are no per-user quotas.
+- **Rate limiting is basic.** The backend limits each IP to 40 `/api` requests per second and blocks an
+  IP for 15 minutes after 10 failed sign-ins (fixed-window Redis counters; both fail open if Redis is
+  down). There are no per-user quotas.
 - **Load-test numbers are from one laptop** with every component co-located. They are not production capacity figures.
 
 ## Further reading

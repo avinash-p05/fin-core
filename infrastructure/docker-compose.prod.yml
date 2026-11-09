@@ -63,7 +63,9 @@ services:
 
   backend:
     build:
-      context: ../backend
+      # Repo root: the image also builds the React dashboard (see backend/Dockerfile).
+      context: ..
+      dockerfile: backend/Dockerfile
     restart: unless-stopped
     environment:
       FINCORE_DB_URL: jdbc:postgresql://postgres:5432/fincore
@@ -91,15 +93,8 @@ services:
       timeout: 5s
       retries: 30
 
-  frontend:
-    build:
-      context: ../frontend
-    restart: unless-stopped
-    mem_limit: 64m
-    depends_on:
-      backend:
-        condition: service_healthy
-
+  # Standalone mode only: a server that already runs its own reverse proxy can leave Caddy out and
+  # forward the public domain straight to the backend container on port 8080.
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -114,7 +109,7 @@ services:
       - caddy-config:/config
     mem_limit: 128m
     depends_on:
-      - frontend
+      - backend
 
 volumes:
   postgres-data:

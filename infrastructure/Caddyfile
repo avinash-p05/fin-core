@@ -1,5 +1,5 @@
-# Public entry point: automatic HTTPS (Let's Encrypt) in front of the dashboard container,
-# which already proxies /api to the backend.
+# Public entry point (standalone mode): automatic HTTPS (Let's Encrypt) in front of the single
+# FinCore container, which serves the dashboard at / and the API at /api on port 8080.
 {$FINCORE_DOMAIN} {
 	encode gzip
 	header {
@@ -8,5 +8,5 @@
 		Referrer-Policy strict-origin-when-cross-origin
 		-Server
 	}
-	reverse_proxy frontend:80
+	reverse_proxy backend:8080
 }

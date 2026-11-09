@@ -50,11 +50,16 @@ spring:
 
 server:
   port: ${FINCORE_PORT:8080}
-  # Trust X-Forwarded-For from internal proxies (Caddy, nginx) so request.getRemoteAddr() is the real
+  # Trust X-Forwarded-For from internal proxies (e.g. Caddy) so request.getRemoteAddr() is the real
   # client IP. Tomcat only trusts private-network addresses, so clients cannot spoof it.
   forward-headers-strategy: native
   error:
     include-stacktrace: never
+  # gzip for the dashboard's JS/CSS and API JSON (nginx used to do this)
+  compression:
+    enabled: true
+    mime-types: text/html,text/css,text/javascript,application/javascript,application/json,application/problem+json,image/svg+xml
+    min-response-size: 1KB
 
 management:
   endpoints:
@@ -115,3 +120,4 @@ fincore:
     bcrypt-strength: ${FINCORE_BCRYPT_STRENGTH:10}
     login-max-failures: ${FINCORE_LOGIN_MAX_FAILURES:10}
     login-failure-window: 15m
+    api-requests-per-second: ${FINCORE_API_REQUESTS_PER_SECOND:40}

@@ -13,7 +13,7 @@ Commands marked **[laptop]** run in PowerShell on your Windows machine; **[serve
   (`~/.ssh/contabo_vps`) never leaves your laptop; the public key (`contabo_vps.pub`) goes on the server.
 - **root** can do anything. You'll create a normal user (`deploy`) for daily work and use `sudo` when needed.
 - **UFW** is the firewall. Only ports 22 (SSH), 80 and 443 (web) will be open.
-- **Docker Compose** runs FinCore's six containers (postgres, redis, kafka, backend, frontend, caddy) from
+- **Docker Compose** runs FinCore's five containers (postgres, redis, kafka, backend, caddy) from
   `infrastructure/docker-compose.prod.yml`. Only Caddy publishes ports; everything else is internal.
 - **Caddy** gets a free Let's Encrypt certificate automatically. With no domain yet we use
   `fincore.YOUR_IP.sslip.io`, a free DNS name that resolves to your IP.

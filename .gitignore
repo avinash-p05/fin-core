@@ -20,3 +20,6 @@ dist/
 
 # Server secrets
 infrastructure/.env.prod
+
+# Dashboard build copied into the jar by backend/Dockerfile
+backend/src/main/resources/static/
