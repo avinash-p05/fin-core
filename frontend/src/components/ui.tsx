@@ -12,7 +12,7 @@ export function PageHeader({ title, actions }: { title: string; actions?: ReactN
 
 export function Card({ title, actions, children }: { title?: string; actions?: ReactNode; children: ReactNode }) {
   return (
-    <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
+    <div className="rounded-xl border border-gray-200 bg-white shadow-sm">
       {title && (
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
           <h2 className="font-medium text-gray-900">{title}</h2>
@@ -27,7 +27,7 @@ export function Card({ title, actions, children }: { title?: string; actions?: R
 type ButtonVariant = 'primary' | 'secondary' | 'danger'
 
 const buttonStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700',
+  primary: 'bg-indigo-600 text-white hover:bg-indigo-700',
   secondary: 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50',
   danger: 'bg-red-600 text-white hover:bg-red-700',
 }
@@ -55,7 +55,7 @@ export function Label({ text, children }: { text: string; children: ReactNode })
 }
 
 const controlClass =
-  'rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500'
+  'rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
 
 /** Full-width input or select, used in forms. */
 export const inputClass = `w-full ${controlClass}`
@@ -66,7 +66,7 @@ export const filterClass = controlClass
 export function Spinner() {
   return (
     <div className="flex justify-center py-8">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-gray-300 border-t-indigo-600" />
     </div>
   )
 }

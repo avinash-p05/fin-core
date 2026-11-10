@@ -48,6 +48,7 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/fraud/alerts/**").hasRole(ROLE_ANALYST)
                         .requestMatchers("/api/**").hasAnyRole(ROLE_OPERATOR, ROLE_ANALYST)
                         .requestMatchers("/actuator/**").authenticated()
@@ -76,7 +77,7 @@ public class SecurityConfig {
 
     @Bean
     UserDetailsService userDetailsService(SecurityProperties props, PasswordEncoder encoder) {
-        return new InMemoryUserDetailsManager(
+        InMemoryUserDetailsManager users = new InMemoryUserDetailsManager(
                 User.withUsername(props.operatorUsername())
                         .password(encoder.encode(props.operatorPassword()))
                         .roles(ROLE_OPERATOR)
@@ -85,6 +86,14 @@ public class SecurityConfig {
                         .password(encoder.encode(props.analystPassword()))
                         .roles(ROLE_OPERATOR, ROLE_ANALYST)
                         .build());
+        if (props.demoEnabled()) {
+            // Least privilege for the public account: payments and ledger, but no fraud review decisions.
+            users.createUser(User.withUsername(props.demoUsername())
+                    .password(encoder.encode(props.demoPassword()))
+                    .roles(ROLE_OPERATOR)
+                    .build());
+        }
+        return users;
     }
 
     @Bean

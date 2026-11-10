@@ -102,8 +102,15 @@ export interface PaymentSubmission {
   httpStatus: number
 }
 
+export interface DemoAccount {
+  enabled: boolean
+  username: string | null
+  password: string | null
+}
+
 export const api = {
   me: () => get<Me>('/me'),
+  demoAccount: () => get<DemoAccount>('/public/demo-account'),
 
   dashboard: () => get<DashboardSummary>('/dashboard/summary'),
 

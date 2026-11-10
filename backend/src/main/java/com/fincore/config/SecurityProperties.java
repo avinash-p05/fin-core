@@ -24,5 +24,10 @@ public record SecurityProperties(
         @DefaultValue("10") int loginMaxFailures,
         @DefaultValue("15m") Duration loginFailureWindow,
         // Requests per second allowed per client IP on /api/** before HTTP 429.
-        @DefaultValue("40") int apiRequestsPerSecond) {
+        @DefaultValue("40") int apiRequestsPerSecond,
+        // Public demo account for visitors: OPERATOR role only (cannot review fraud alerts).
+        // Its credentials are published on purpose via GET /api/v1/public/demo-account.
+        @DefaultValue("true") boolean demoEnabled,
+        @DefaultValue("demo") String demoUsername,
+        @DefaultValue("demo-password") String demoPassword) {
 }

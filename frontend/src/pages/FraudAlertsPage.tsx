@@ -87,7 +87,7 @@ export function FraudAlertsPage() {
                         setSelected(alert)
                         setActionError(null)
                       }}
-                      className={`cursor-pointer hover:bg-gray-50 ${selected?.id === alert.id ? 'bg-blue-50' : ''}`}
+                      className={`cursor-pointer hover:bg-gray-50 ${selected?.id === alert.id ? 'bg-indigo-50' : ''}`}
                     >
                       <Cell className="font-mono text-xs">{shortId(alert.paymentId)}</Cell>
                       <Cell>{formatINR(alert.payment.amount)}</Cell>

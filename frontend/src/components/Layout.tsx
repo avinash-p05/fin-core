@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { Logo } from './Logo'
 
 const navItems = [
   { to: '/', label: 'Dashboard' },
@@ -14,10 +15,13 @@ export function Layout() {
   const { user, logout } = useAuth()
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-page">
       {/* Sidebar */}
-      <aside className="hidden w-56 shrink-0 bg-gray-900 text-gray-300 md:block">
-        <div className="px-6 py-5 text-lg font-semibold text-white">FinCore</div>
+      <aside className="hidden w-56 shrink-0 bg-slate-900 text-slate-300 md:block">
+        <div className="flex items-center gap-2 px-6 py-5 text-lg font-semibold text-white">
+          <Logo />
+          FinCore
+        </div>
         <nav className="space-y-1 px-3">
           {navItems.map((item) => (
             <NavLink
@@ -25,7 +29,7 @@ export function Layout() {
               to={item.to}
               end
               className={({ isActive }) =>
-                `block rounded-md px-3 py-2 text-sm ${isActive ? 'bg-gray-800 text-white' : 'hover:bg-gray-800 hover:text-white'}`
+                `block rounded-md px-3 py-2 text-sm ${isActive ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`
               }
             >
               {item.label}
@@ -41,7 +45,7 @@ export function Layout() {
           {/* On small screens the sidebar is hidden, so show the links here instead. */}
           <nav className="flex gap-3 overflow-x-auto text-sm md:hidden">
             {navItems.map((item) => (
-              <NavLink key={item.to} to={item.to} end className={({ isActive }) => (isActive ? 'font-medium text-blue-600' : 'text-gray-600')}>
+              <NavLink key={item.to} to={item.to} end className={({ isActive }) => (isActive ? 'font-medium text-indigo-600' : 'text-gray-600')}>
                 {item.label}
               </NavLink>
             ))}
@@ -50,7 +54,7 @@ export function Layout() {
             <span className="text-gray-600">
               {user?.username} <span className="text-gray-400">({user?.roles.join(', ')})</span>
             </span>
-            <button onClick={logout} className="text-blue-600 hover:underline">
+            <button onClick={logout} className="text-indigo-600 hover:underline">
               Sign out
             </button>
           </div>

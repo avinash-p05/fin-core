@@ -121,3 +121,7 @@ fincore:
     login-max-failures: ${FINCORE_LOGIN_MAX_FAILURES:10}
     login-failure-window: 15m
     api-requests-per-second: ${FINCORE_API_REQUESTS_PER_SECOND:40}
+    # Public demo account shown on the login page ("Try the demo"); OPERATOR role only.
+    demo-enabled: ${FINCORE_DEMO_LOGIN_ENABLED:true}
+    demo-username: ${FINCORE_DEMO_USER:demo}
+    demo-password: ${FINCORE_DEMO_PASSWORD:demo-password}

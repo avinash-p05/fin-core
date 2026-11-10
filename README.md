@@ -26,6 +26,15 @@ What it does:
 - **Operations dashboard.** Built with React, Vite, TypeScript and Tailwind, and connected to the
   real APIs.
 
+## Try it
+
+**Live demo:** https://fin-core.duckdns.org. Click **Try the demo** on the sign-in page; no account
+needed. The demo user has the OPERATOR role: it can send payments, issue refunds and explore the
+ledger, but cannot approve or reject held payments.
+
+Want **analyst access** (fraud review) or have questions? Email me at
+`avinashpauskar05 [at] gmail [dot] com`.
+
 ## Architecture
 
 ```mermaid
@@ -147,6 +156,8 @@ Then open http://localhost:5173.
 | `FINCORE_ANALYST_USER` / `FINCORE_ANALYST_PASSWORD` | `analyst` / `analyst-dev-password` | Dev user with the ANALYST and OPERATOR roles |
 | `FINCORE_LOGIN_MAX_FAILURES` | `10` | Failed sign-ins per IP in 15 minutes before HTTP 429 |
 | `FINCORE_API_REQUESTS_PER_SECOND` | `40` | `/api` requests per second per IP before HTTP 429 |
+| `FINCORE_DEMO_LOGIN_ENABLED` | `true` | Public demo account behind the "Try the demo" button (OPERATOR role) |
+| `FINCORE_DEMO_USER` / `FINCORE_DEMO_PASSWORD` | `demo` / `demo-password` | Demo account credentials; published by `GET /api/v1/public/demo-account` |
 | `FINCORE_ALLOWED_ORIGINS` | `http://localhost:5173` | CORS origins, comma separated |
 | `FINCORE_PORT` | `8080` | HTTP port |
 
