@@ -60,7 +60,7 @@ export function LoginPage() {
   return (
     <div className="flex min-h-screen bg-page">
       {/* Brand panel (hidden on small screens) */}
-      <div className="hidden w-1/2 flex-col justify-between bg-gradient-to-br from-indigo-600 to-violet-700 p-12 text-white lg:flex">
+      <div className="hidden w-1/2 flex-col justify-between bg-gradient-to-br from-indigo-600 to-indigo-800 p-12 text-white lg:flex">
         <div className="flex items-center gap-3 text-xl font-semibold">
           <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white font-bold text-indigo-600">F</span>
           FinCore

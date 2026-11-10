@@ -17,8 +17,8 @@ export function Layout() {
   return (
     <div className="flex min-h-screen bg-page">
       {/* Sidebar */}
-      <aside className="hidden w-56 shrink-0 bg-slate-900 text-slate-300 md:block">
-        <div className="flex items-center gap-2 px-6 py-5 text-lg font-semibold text-white">
+      <aside className="hidden w-56 shrink-0 border-r border-gray-200 bg-white md:block">
+        <div className="flex items-center gap-2 px-6 py-5 text-lg font-semibold text-gray-900">
           <Logo />
           FinCore
         </div>
@@ -29,7 +29,9 @@ export function Layout() {
               to={item.to}
               end
               className={({ isActive }) =>
-                `block rounded-md px-3 py-2 text-sm ${isActive ? 'bg-indigo-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`
+                `block rounded-md px-3 py-2 text-sm ${
+                  isActive ? 'bg-indigo-50 font-medium text-indigo-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                }`
               }
             >
               {item.label}
