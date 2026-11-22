@@ -1,0 +1,64 @@
+# FinCore: one app module for a server (or laptop) laid out as
+#
+#   ~/edge      shared Caddy reverse proxy / API gateway on 80/443   (HTTPS, routing)
+#   ~/platform  shared PostgreSQL, Redis, Kafka                      (data services)
+#   ~/<app>     one compose project per app                          (this file)
+#
+# This stack is a single container: Spring Boot serves the dashboard at / and the API at /api.
+# It sits on its own private network "app-fincore", shared only with the edge proxy and the
+# platform services it uses, so other apps can't reach it:
+#   - the edge proxy reaches it as      fincore-app:8080
+#   - it reaches its data services at   platform-postgres:5432/fincore, platform-redis:6379,
+#                                       platform-kafka:9092
+# Port 8080 is also published on 127.0.0.1 only (never the internet), for local use and checks.
+#
+# Server (no git clone; ~/fincore holds only compose.yaml, .env and deploy.sh, see docs/deploy-vps.md):
+#   docker network create app-fincore                        # once; listed in ~/edge and ~/platform compose
+#   APP_DB_PASSWORD=<FINCORE_DB_PASSWORD> ~/platform/create-app-db.sh fincore
+#   ./deploy.sh                                              # pull the latest image and restart
+#   cp fincore.caddy ~/edge/sites/ && ~/edge/reload.sh       # once
+# Laptop (with ~/platform running):
+#   cp .env.example .env && docker compose up -d --build
+name: fincore
+
+services:
+  app:
+    # Built and pushed by GitHub Actions (.github/workflows/ci.yml) on every push to main.
+    # Server: docker compose pull && docker compose up -d   (no source code needed, see deploy.sh)
+    # Roll back: FINCORE_IMAGE_TAG=<commit sha> in .env
+    image: ghcr.io/avinash-p05/fin-core:${FINCORE_IMAGE_TAG:-latest}
+    # Laptop only: docker compose up -d --build builds the same image from this checkout.
+    build:
+      # The image also builds the React dashboard (see backend/Dockerfile).
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      FINCORE_DB_URL: jdbc:postgresql://platform-postgres:5432/fincore
+      FINCORE_DB_USER: fincore
+      FINCORE_DB_PASSWORD: ${FINCORE_DB_PASSWORD:?Set FINCORE_DB_PASSWORD in .env}
+      FINCORE_DB_POOL_SIZE: 10
+      FINCORE_REDIS_HOST: platform-redis
+      FINCORE_KAFKA_BOOTSTRAP_SERVERS: platform-kafka:9092
+      FINCORE_DEMO_SEED: "true"
+      FINCORE_ALLOWED_ORIGINS: ${FINCORE_ALLOWED_ORIGINS:-http://localhost:5173}
+      FINCORE_OPERATOR_PASSWORD: ${FINCORE_OPERATOR_PASSWORD:?Set FINCORE_OPERATOR_PASSWORD in .env}
+      FINCORE_ANALYST_PASSWORD: ${FINCORE_ANALYST_PASSWORD:?Set FINCORE_ANALYST_PASSWORD in .env}
+    ports:
+      - "127.0.0.1:8080:8080"
+    # The Dockerfile sizes the heap at 75% of this limit (~768 MB).
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks:
+      app-fincore:
+        # The name the edge proxy uses: reverse_proxy fincore-app:8080
+        aliases: [fincore-app]
+
+networks:
+  # Created once per machine; edge-caddy and platform-postgres/-redis/-kafka join it too.
+  app-fincore:
+    external: true

@@ -11,8 +11,8 @@ Kafka and the consumer all shared one machine, so they competed for the same CPU
 |---|---|
 | Machine | AMD Ryzen 7 6800HS (8 cores / 16 threads), 16 GB RAM, Windows 11 |
 | Docker VM | 16 vCPU, ~7.4 GB RAM (Docker Desktop 29.7) |
-| Stack | `infrastructure/docker-compose.yml` + `loadtest/docker-compose.loadtest.yml` |
-| Backend | Spring Boot 4.1, Java 21, Hikari pool 20, PostgreSQL 16, Redis 7, Kafka 3.8 (1 broker, 3 partitions) |
+| Stack | The old standalone compose file (FinCore with its own PostgreSQL, Redis and Kafka containers) + `loadtest/docker-compose.loadtest.yml`. FinCore now uses the shared platform services instead; these numbers were not re-measured on that setup. |
+| Backend | Spring Boot 4.1, Java 25, Hikari pool 20, PostgreSQL 16, Redis 7, Kafka 3.8 (1 broker, 3 partitions) |
 | Load | k6 v1.2.2, `constant-vus` with 50 virtual users for 60 s, after a 15 s warm-up run |
 | Script | [`payments.js`](payments.js) sends `POST /api/v1/payments` with a unique `Idempotency-Key` per request, ₹1–₹500.99 |
 
@@ -91,9 +91,12 @@ These checks ran after runs A–E plus warm-ups, against the same database:
 ## Reproduce
 
 ```bash
-docker compose -f infrastructure/docker-compose.yml -f loadtest/docker-compose.loadtest.yml up -d --build
-# For runs B-E, start the backend with a lower BCrypt cost first:
-#   FINCORE_BCRYPT_STRENGTH=4 docker compose -f infrastructure/docker-compose.yml -f loadtest/docker-compose.loadtest.yml up -d backend
+# FinCore on the shared platform (see the README quick start), with the load-test override.
+# Note: compose.yaml uses a Hikari pool of 10; the measured runs used 20 (add FINCORE_DB_POOL_SIZE: 20
+# to the override to match).
+docker compose -f compose.yaml -f loadtest/docker-compose.loadtest.yml up -d --build
+# For runs B-E, start the app with a lower BCrypt cost first:
+#   FINCORE_BCRYPT_STRENGTH=4 docker compose -f compose.yaml -f loadtest/docker-compose.loadtest.yml up -d app
 k6 run -e SCENARIO=warmup -e VUS=20 -e DURATION=15s -e ACCOUNTS=10 loadtest/payments.js
 k6 run -e SCENARIO=spread -e VUS=50 -e DURATION=60s loadtest/payments.js
 k6 run -e SCENARIO=hot    -e VUS=50 -e DURATION=60s loadtest/payments.js

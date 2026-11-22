@@ -73,12 +73,14 @@ happens after the payment commits. More detail is in [docs/architecture.md](docs
 ## Repository layout
 
 ```
-backend/          Spring Boot 4.1 / Java 21 application (Maven wrapper, Dockerfile)
+backend/          Spring Boot 4.1 / Java 25 application (Maven wrapper, Dockerfile)
   src/main/java/com/fincore/
     account/ customer/ payment/ ledger/ fraud/ idempotency/ outbox/ notification/ dashboard/ config/ common/
   src/main/resources/db/migration/   Flyway V1..V4
 frontend/         React 19 + Vite 8 + TypeScript + Tailwind 4 dashboard (bundled into the backend image)
-infrastructure/   docker-compose.yml (PostgreSQL, Redis, Kafka, backend, frontend)
+compose.yaml      the FinCore container (uses the shared platform services, see below)
+deploy/edge/      FinCore's site file for the shared edge proxy
+.github/workflows/ci.yml  tests + image build/push to ghcr.io
 docs/             architecture.md, interview-guide.md
 PROGRESS.md       Phase-by-phase log with actual test results
 ```
@@ -87,50 +89,63 @@ PROGRESS.md       Phase-by-phase log with actual test results
 
 | Tool | Version used | Needed for |
 |---|---|---|
-| JDK | 21 | backend (the Maven wrapper downloads Maven 3.10) |
-| Docker + Docker Compose | Docker 29 / Compose v5 | infrastructure, Testcontainers, full stack |
+| JDK | 25 | backend (the Maven wrapper downloads Maven 3.10) |
+| Docker + Docker Compose | Docker 29 / Compose v5 | running FinCore, Testcontainers |
 | Node.js + npm | Node 22 / npm 10 | dashboard development |
 
-## Quick start: everything in Docker
+## How FinCore runs: platform + edge
 
-```bash
-docker compose -f infrastructure/docker-compose.yml up -d --build
+FinCore doesn't start its own database, cache, broker or proxy. Every app on the machine (laptop or
+server) shares two fixed stacks, and FinCore is just **one container** plugged into them:
+
+```
+internet ─► edge (Caddy, 80/443: HTTPS + routing) ─► fincore-app:8080 ─► platform-postgres:5432/fincore
+                                                                       ├► platform-redis:6379   (keys "fincore:")
+                                                                       └► platform-kafka:9092   (topics "fincore.*")
 ```
 
-- Dashboard: http://localhost:8080. Sign in as `analyst` / `analyst-dev-password`, or as
-  `operator` / `operator-dev-password`, who can't make review decisions.
-- API: http://localhost:8080/api/v1. Swagger UI is at http://localhost:8080/swagger-ui.html and the
-  OpenAPI JSON at `/v3/api-docs`.
+- **platform** (`~/platform`): shared PostgreSQL, Redis and Kafka. One database + role per app.
+- **edge** (`~/edge`): shared Caddy reverse proxy. FinCore's site file is
+  [deploy/edge/fincore.caddy](deploy/edge/fincore.caddy).
+- **FinCore** ([compose.yaml](compose.yaml)): only the app, on the private network `app-fincore`,
+  which the edge and the platform services also join. Other apps can't reach it.
 
-FinCore ships as **one container**: `backend/Dockerfile` (build context = repo root) builds the React
+FinCore ships as one image: `backend/Dockerfile` (build context = repo root) builds the React
 dashboard with Node, copies it into the jar's `static/` folder and builds the Spring Boot jar. Spring
 serves the dashboard at `/` (client-side routes such as `/payments/new` forward to `index.html`) and
-the API at `/api` on port 8080. Build it on its own with `docker build -f backend/Dockerfile -t fincore .`
+the API at `/api` on port 8080.
+
+## Quick start
+
+With the platform stack already running (`docker compose up -d` in `~/platform`):
+
+```bash
+docker network create app-fincore            # once per machine (skip if it exists)
+cp .env.example .env                         # fill in the three passwords
+APP_DB_PASSWORD=<FINCORE_DB_PASSWORD> ~/platform/create-app-db.sh fincore   # once
+docker compose up -d --build
+```
+
+- Dashboard: http://localhost:8080 (published on 127.0.0.1 only). Sign in as `analyst` or
+  `operator` with the passwords from `.env`, or click **Try the demo**.
+- API: http://localhost:8080/api/v1. Swagger UI is at http://localhost:8080/swagger-ui.html and the
+  OpenAPI JSON at `/v3/api-docs`.
 - Health: http://localhost:8080/actuator/health
 
-The Compose backend sets `FINCORE_DEMO_SEED=true`, which creates four demo customers and accounts
+The container sets `FINCORE_DEMO_SEED=true`, which creates four demo customers and accounts
 (Asha ₹5,00,000, Rohan ₹2,50,000, Meera ₹50,000, Vikram ₹1,000) through the normal services.
 It only does this when the database is empty.
 
-Stop the stack with `docker compose -f infrastructure/docker-compose.yml down`. Add `-v` to also
-delete the PostgreSQL volume.
+**CI/CD:** every push runs the test suite on GitHub Actions; a push to `main` also builds this image
+and publishes it to `ghcr.io/avinash-p05/fin-core` (tags `latest` and the commit SHA). The server only
+pulls it (`deploy/deploy.sh`), so it never builds or holds the source. See [docs/deploy-vps.md](docs/deploy-vps.md).
 
-## Local development
+After a backend change locally, rebuild with `docker compose up -d --build`. Stop with `docker compose down`
+(the data lives in the platform's Postgres, so nothing is lost).
 
-Start only the infrastructure:
+## Dashboard development
 
-```bash
-docker compose -f infrastructure/docker-compose.yml up -d postgres redis kafka
-```
-
-Run the backend. Kafka is reachable from the host on port 9094:
-
-```bash
-cd backend
-FINCORE_KAFKA_BOOTSTRAP_SERVERS=localhost:9094 FINCORE_DEMO_SEED=true ./mvnw spring-boot:run
-```
-
-Run the dashboard. Vite proxies `/api` to `http://localhost:8080`:
+Run the Vite dev server against the running container. Vite proxies `/api` to `http://localhost:8080`:
 
 ```bash
 cd frontend
@@ -148,7 +163,7 @@ Then open http://localhost:5173.
 | `FINCORE_DB_USER` / `FINCORE_DB_PASSWORD` | `fincore` / `fincore` | Database credentials |
 | `FINCORE_DB_POOL_SIZE` | `20` | Hikari pool size |
 | `FINCORE_REDIS_HOST` / `FINCORE_REDIS_PORT` | `localhost` / `6379` | Redis for velocity counters |
-| `FINCORE_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka bootstrap servers (use `localhost:9094` with the Compose broker) |
+| `FINCORE_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka bootstrap servers |
 | `FINCORE_OUTBOX_PUBLISHER_ENABLED` | `true` | Run the scheduled outbox relay |
 | `FINCORE_CONSUMER_ENABLED` | `true` | Run the in-process Kafka consumer |
 | `FINCORE_DEMO_SEED` | `false` | Seed demo customers and accounts into an empty database |
@@ -318,7 +333,7 @@ which caused lost updates. See `RowLocks` and the interview guide.
 
 ## Load test
 
-k6 was run against the Docker Compose stack on one laptop (Ryzen 7 6800HS). Full details,
+k6 was run against FinCore on one laptop (Ryzen 7 6800HS). Full details,
 caveats and raw output are in [loadtest/RESULTS.md](loadtest/RESULTS.md).
 
 - **~1,000 payments/s, p95 87 ms, 0 errors** with 50 virtual users over 100 accounts and BCrypt

@@ -1,0 +1,17 @@
+# FinCore site for the server's shared edge proxy (Caddy).
+# Install once:  cp deploy/edge/fincore.caddy ~/edge/sites/ && ~/edge/reload.sh
+#
+# One container: Spring Boot serves the dashboard and /api, and sets its own security,
+# caching and gzip headers.
+fin-core.duckdns.org {
+	import access_log
+	import protect fincore
+	reverse_proxy fincore-app:8080
+}
+
+# Previous address (linked from the resume): permanent redirect, path and query preserved.
+fincore.213.199.40.87.sslip.io {
+	import access_log
+	import protect fincore_old
+	redir https://fin-core.duckdns.org{uri} permanent
+}

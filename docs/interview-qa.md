@@ -30,7 +30,7 @@ are in [interview-guide.md](interview-guide.md).
 ## 1. Pitch
 
 **Q: Describe FinCore in 30 seconds.**
-FinCore is a simulated payments backend in Java 21 and Spring Boot. It moves INR between accounts
+FinCore is a simulated payments backend in Java 25 and Spring Boot. It moves INR between accounts
 using a double-entry ledger in PostgreSQL. Every transfer is atomic, idempotent and protected
 against race conditions. Fraud rules run before money moves, using Redis for velocity checks.
 Committed payments are published to Kafka through a transactional outbox, and a downstream
@@ -554,7 +554,8 @@ The API is stateless and authenticated by an `Authorization` header, not cookies
 abusing cookies the browser sends automatically, so the attack doesn't apply.
 
 **Q: How is CORS handled?**
-The browser talks to a single origin: Vite's proxy in development, nginx in Docker. CORS is still
+The browser talks to a single origin: Vite's proxy in development, and in Docker Spring Boot serves the
+dashboard and the API together (behind the shared Caddy edge on the server). CORS is still
 restricted to configured origins for direct calls.
 
 **Q: How do errors avoid leaking internals?**
