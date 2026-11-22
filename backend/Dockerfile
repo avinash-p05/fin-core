@@ -11,7 +11,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: build the Spring Boot jar, with the dashboard copied into src/main/resources/static
-FROM eclipse-temurin:21-jdk-alpine AS backend
+FROM eclipse-temurin:25-jdk-alpine AS backend
 WORKDIR /workspace
 COPY backend/.mvn .mvn
 COPY backend/mvnw backend/pom.xml ./
@@ -21,7 +21,7 @@ COPY --from=frontend /frontend/dist src/main/resources/static
 RUN ./mvnw -q -B package -DskipTests
 
 # Stage 3: runtime, JRE only, non-root user
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 RUN addgroup -S fincore && adduser -S fincore -G fincore
 WORKDIR /app
 COPY --from=backend /workspace/target/fincore-backend-*.jar app.jar
