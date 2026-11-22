@@ -9,6 +9,8 @@ cd "$(dirname "$0")"
 raw=https://raw.githubusercontent.com/avinash-p05/fin-core/main
 curl -fsSL "$raw/compose.yaml" -o compose.yaml.new && mv compose.yaml.new compose.yaml
 curl -fsSL "$raw/deploy/edge/fincore.caddy" -o fincore.caddy.new && mv fincore.caddy.new fincore.caddy
+# Takes effect next run (mv swaps the file; this run keeps reading the old one).
+curl -fsSL "$raw/deploy/deploy.sh" -o deploy.sh.new && chmod +x deploy.sh.new && mv deploy.sh.new deploy.sh
 
 docker compose pull app
 docker compose up -d --no-build --remove-orphans app
@@ -17,7 +19,8 @@ docker image prune -f > /dev/null
 echo "Waiting for FinCore to report healthy..."
 for _ in $(seq 1 60); do
   if curl -fs http://127.0.0.1:8080/actuator/health | grep -q '"UP"'; then
-    echo "FinCore is up: $(docker compose images app --format '{{.Repository}}:{{.Tag}}' 2>/dev/null || true)"
+    id=$(docker compose ps -q app)
+    echo "FinCore is up: $(docker inspect "$id" --format '{{.Config.Image}} (commit {{index .Config.Labels "org.opencontainers.image.revision"}})')"
     exit 0
   fi
   sleep 3
