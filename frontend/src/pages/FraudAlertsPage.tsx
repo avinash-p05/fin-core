@@ -4,7 +4,7 @@ import { formatDate, formatINR, shortId } from '../services/format'
 import { useFetch } from '../hooks/useFetch'
 import { useAuth } from '../context/AuthContext'
 import type { FraudAlert, FraudAlertStatus } from '../types/api'
-import { Button, Card, ErrorMessage, Label, PageHeader, Pagination, Spinner, EmptyState, filterClass, inputClass } from '../components/ui'
+import { AiBadge, Button, Card, ErrorMessage, Label, PageHeader, Pagination, Spinner, EmptyState, filterClass, inputClass } from '../components/ui'
 import { StatusBadge } from '../components/StatusBadge'
 import { CopilotPanel } from '../components/CopilotPanel'
 import { Cell, Table, accountName } from '../components/tables'
@@ -51,7 +51,15 @@ export function FraudAlertsPage() {
 
   return (
     <div>
-      <PageHeader title="Fraud Alerts" />
+      <PageHeader
+        title="Fraud Alerts"
+        description={
+          <>
+            Risky payments are held here for an analyst. Select an open alert and click <strong>Summarise</strong>{' '}
+            <AiBadge className="align-middle" /> for an AI case summary that is checked against the ledger.
+          </>
+        }
+      />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
         {/* Alert list */}
@@ -114,7 +122,9 @@ export function FraudAlertsPage() {
         <div>
           <Card title="Alert details">
             {!selected ? (
-              <p className="text-sm text-gray-500">Select an alert from the list.</p>
+              <p className="text-sm text-gray-500">
+                Select an alert from the list to see its details and get an AI summary of the held payment.
+              </p>
             ) : (
               <div className="space-y-4 text-sm">
                 <dl className="space-y-2">

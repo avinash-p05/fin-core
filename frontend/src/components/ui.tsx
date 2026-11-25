@@ -1,10 +1,13 @@
 import type { ButtonHTMLAttributes, ReactNode } from 'react'
 import { ApiError } from '../services/api'
 
-export function PageHeader({ title, actions }: { title: string; actions?: ReactNode }) {
+export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
   return (
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+      <div>
+        <h1 className="text-2xl font-semibold text-gray-900">{title}</h1>
+        {description && <p className="mt-1 max-w-3xl text-sm text-gray-500">{description}</p>}
+      </div>
       {actions && <div className="flex gap-2">{actions}</div>}
     </div>
   )
@@ -100,5 +103,16 @@ export function Pagination({ page, totalPages, onChange }: { page: number; total
         Next
       </Button>
     </div>
+  )
+}
+
+/** Small "AI" marker used wherever the fraud copilot appears. */
+export function AiBadge({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-0.5 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none tracking-wide text-white ${className}`}
+    >
+      <span aria-hidden="true">✦</span> AI
+    </span>
   )
 }

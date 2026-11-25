@@ -9,6 +9,10 @@ const GITHUB_URL = 'https://github.com/avinash-p05/fin-core'
 const features = [
   { title: 'Double-entry ledger', text: 'Every transfer posts balanced debits and credits.' },
   { title: 'Fraud screening', text: 'Risky payments are held for analyst review.' },
+  {
+    title: 'AI fraud copilot',
+    text: 'An LLM reviews each held payment and drafts a case summary. Every figure is checked against the ledger.',
+  },
   { title: 'Reliable events', text: 'Kafka events via a transactional outbox.' },
 ]
 
@@ -85,7 +89,7 @@ export function LoginPage() {
           </ul>
         </div>
 
-        <p className="text-sm text-indigo-200">Spring Boot · PostgreSQL · Redis · Kafka · React</p>
+        <p className="text-sm text-indigo-200">Spring Boot · Spring AI · PostgreSQL · Redis · Kafka · React</p>
       </div>
 
       {/* Sign-in form */}
@@ -136,7 +140,7 @@ export function LoginPage() {
               >
                 Try the demo
               </button>
-              <p className="mt-2 text-center text-xs text-gray-500">No sign-up needed. Demo users can send payments and view the ledger.</p>
+              <p className="mt-2 text-center text-xs text-gray-500">No sign-up needed. Send payments, explore the ledger and try the AI fraud copilot.</p>
             </>
           )}
 

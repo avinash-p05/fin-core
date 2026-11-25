@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react'
 import { ApiError, api } from '../services/api'
 import { formatINR, shortId } from '../services/format'
 import type { Account, CopilotResponse, FraudAlert, SuggestedAction } from '../types/api'
-import { Button, ErrorMessage } from './ui'
+import { AiBadge, Button, ErrorMessage } from './ui'
 import { accountName } from './tables'
 
 const actionStyles: Record<SuggestedAction, { label: string; className: string }> = {
@@ -64,8 +64,10 @@ export function CopilotPanel({ alert, accounts }: { alert: FraudAlert; accounts:
     <section className="space-y-3 border-t border-gray-200 pt-4" aria-label="Copilot">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h3 className="font-medium text-gray-900">Copilot</h3>
-          <p className="text-xs text-gray-500">Reads this payment's history and drafts a summary. You still decide.</p>
+          <h3 className="flex items-center gap-2 font-medium text-gray-900">
+            Fraud copilot <AiBadge />
+          </h3>
+          <p className="text-xs text-gray-500">An LLM reads this payment's history and drafts a summary. You still decide.</p>
         </div>
         {!result && (
           <Button variant="secondary" disabled={loading} onClick={ask} className="shrink-0">

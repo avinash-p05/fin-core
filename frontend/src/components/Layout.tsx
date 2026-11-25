@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Logo } from './Logo'
+import { AiBadge } from './ui'
 
 const navItems = [
   { to: '/', label: 'Dashboard' },
@@ -9,7 +10,7 @@ const navItems = [
   { to: '/payments', label: 'Transactions' },
   { to: '/payments/new', label: 'New Payment' },
   { to: '/ledger', label: 'Ledger' },
-  { to: '/fraud', label: 'Fraud Alerts' },
+  { to: '/fraud', label: 'Fraud Alerts', ai: true },
 ]
 
 /** Same style for sidebar links and mobile menu links. */
@@ -34,7 +35,7 @@ export function Layout() {
         <nav className="space-y-1 px-3">
           {navItems.map((item) => (
             <NavLink key={item.to} to={item.to} end className={navLinkClass}>
-              {item.label}
+              <NavLabel label={item.label} ai={item.ai} />
             </NavLink>
           ))}
         </nav>
@@ -78,7 +79,7 @@ export function Layout() {
               <nav className="space-y-1">
                 {navItems.map((item) => (
                   <NavLink key={item.to} to={item.to} end className={navLinkClass} onClick={() => setMenuOpen(false)}>
-                    {item.label}
+                    <NavLabel label={item.label} ai={item.ai} />
                   </NavLink>
                 ))}
               </nav>
@@ -99,5 +100,15 @@ export function Layout() {
         </main>
       </div>
     </div>
+  )
+}
+
+/** Nav text, with an "AI" marker on the page that hosts the fraud copilot. */
+function NavLabel({ label, ai }: { label: string; ai?: boolean }) {
+  return (
+    <span className="flex items-center justify-between gap-2">
+      {label}
+      {ai && <AiBadge />}
+    </span>
   )
 }

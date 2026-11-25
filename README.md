@@ -171,7 +171,7 @@ Then open http://localhost:5173.
 | `FINCORE_KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka bootstrap servers |
 | `FINCORE_OUTBOX_PUBLISHER_ENABLED` | `true` | Run the scheduled outbox relay |
 | `FINCORE_CONSUMER_ENABLED` | `true` | Run the in-process Kafka consumer |
-| `FINCORE_DEMO_SEED` | `false` | Seed demo customers and accounts into an empty database |
+| `FINCORE_DEMO_SEED` | `false` | Seed demo customers and accounts into an empty database, and hold two payments for review whenever no REVIEW alert is open (so visitors can try the copilot) |
 | `FINCORE_OPERATOR_USER` / `FINCORE_OPERATOR_PASSWORD` | `operator` / `operator-dev-password` | Dev user with the OPERATOR role |
 | `FINCORE_ANALYST_USER` / `FINCORE_ANALYST_PASSWORD` | `analyst` / `analyst-dev-password` | Dev user with the ANALYST and OPERATOR roles |
 | `FINCORE_LOGIN_MAX_FAILURES` | `10` | Failed sign-ins per IP in 15 minutes before HTTP 429 |
@@ -413,7 +413,7 @@ cd frontend && npm run build     # type-check + production build
 ```
 
 The integration tests start real **PostgreSQL 16, Redis 7 and Kafka 3.8** containers, shared for
-the whole run. The last full run executed **109 tests: 109 passed, 0 failed** (the copilot eval,
+the whole run. The last full run executed **111 tests: 111 passed, 0 failed** (the copilot eval,
 which calls a real model, is tagged `eval` and excluded).
 
 | Test class | Tests | What it covers |
@@ -435,6 +435,7 @@ which calls a real model, is tagged `eval` and excluded).
 | `CopilotQuotaTest` (unit) | 1 | Redis down: copilot refuses instead of calling the model unmetered |
 | `CopilotProviderConfigTest` | 2 | `FINCORE_COPILOT_PROVIDER=openai` selects OpenAI (gpt-5-mini) and no other OpenAI models start |
 | `CopilotDisabledTest` | 1 | With no provider configured the app starts and the copilot answers 503 |
+| `DemoHeldPaymentsTest` | 2 | The demo seeder's sample payments are really held with an open REVIEW alert, so visitors can try the copilot |
 | `OutboxKafkaIntegrationTest` | 5 | Outbox written only on commit, consume, duplicate publication and delivery have no second effect, refund events, malformed message sent to DLT, bounded retries then DLT |
 
 The concurrency tests found a real bug during development. A repository
