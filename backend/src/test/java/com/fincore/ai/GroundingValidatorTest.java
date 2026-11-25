@@ -37,7 +37,7 @@ class GroundingValidatorTest {
     final AlertView alert = new AlertView(UUID.randomUUID(), FraudAlertStatus.OPEN, FraudDecision.REVIEW, 50,
             List.of(FraudRule.HIGH_VALUE), Instant.now(), held, 40, 70, new BigDecimal("100000.00"));
     final Evidence evidence = new Evidence(alert, Set.of(source, destination),
-            Map.of(held.id(), held, earlier.id(), earlier), Map.of(source, sourceAccount));
+            Map.of(held.id(), held, earlier.id(), earlier), Map.of(source, sourceAccount), null);
 
     final GroundingValidator validator = new GroundingValidator();
 
@@ -95,6 +95,32 @@ class GroundingValidatorTest {
     }
 
     @Test
+    void acceptsTypicalAmountsFromPayeeHistory() {
+        var history = new CopilotDtos.BeneficiaryHistory(source, destination, 4, Instant.now(), Instant.now(),
+                new BigDecimal("3000.00"), new BigDecimal("1850.00"), new BigDecimal("40.0"));
+        var withHistory = new Evidence(alert, evidence.scopeAccounts(), evidence.payments(), evidence.accounts(), history);
+        var draft = draft("40 times the largest earlier payment (INR 3000.00); typical is INR 1850.00.",
+                cite(held.id(), "120000.00"));
+
+        assertThat(validator.validate(draft, withHistory).grounded()).isTrue();
+        assertThat(validator.validate(draft, evidence).grounded()).isFalse(); // not fetched => not evidence
+    }
+
+    @Test
+    void countBeforeAnAmountDoesNotHideTheAmount() {
+        // The amount after "#2" must still be checked: known passes, unknown fails, and 2 is not money.
+        assertThat(validator.validate(draft("Transfer #2 INR 120000.00 is held.", cite(held.id(), "120000.00")), evidence)
+                .grounded()).isTrue();
+        assertThat(validator.validate(draft("Transfer #2 INR 777.00 went out.", cite(held.id(), "120000.00")), evidence)
+                .errors()).anyMatch(e -> e.contains("777.00")).noneMatch(e -> e.contains("amount 2,"));
+    }
+
+    @Test
+    void lowercaseLIsNotLakh() {
+        assertThat(validator.validate(draft("Seen 7 l times.", cite(held.id(), "120000.00")), evidence).grounded()).isTrue();
+    }
+
+    @Test
     void rejectsUnknownIdInProse() {
         var result = validator.validate(draft("Linked to account " + outsider + ".", cite(held.id(), "120000.00")), evidence);
 
@@ -115,7 +141,7 @@ class GroundingValidatorTest {
     void rejectsPaymentOutsideTheAlertsAccounts() {
         PaymentView foreign = payment(outsider, UUID.randomUUID(), "50.00", PaymentStatus.COMPLETED);
         var widened = new Evidence(alert, evidence.scopeAccounts(), Map.of(held.id(), held, foreign.id(), foreign),
-                evidence.accounts());
+                evidence.accounts(), null);
 
         var result = validator.validate(draft("Other activity.", cite(foreign.id(), "50.00")), widened);
 

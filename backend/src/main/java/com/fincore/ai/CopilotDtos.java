@@ -33,9 +33,16 @@ public final class CopilotDtos {
                               Instant openedAt, long ageDays) {
     }
 
-    /** Settled payments from the alert's source account to its destination, before this one. */
+    /**
+     * Settled payments from the alert's source account to its destination, before this one. The
+     * comparison with the held amount is computed here, not left to the model's arithmetic.
+     *
+     * @param heldAmountVsLargestPrior held amount divided by the largest earlier payment (e.g. 48.0 = 48x);
+     *                                 null when there is no earlier payment
+     */
     public record BeneficiaryHistory(UUID sourceAccountId, UUID destinationAccountId, long settledPayments,
-                                     Instant firstSettledAt, Instant lastSettledAt) {
+                                     Instant firstSettledAt, Instant lastSettledAt, BigDecimal largestPriorAmount,
+                                     BigDecimal medianPriorAmount, BigDecimal heldAmountVsLargestPrior) {
     }
 
     /** The alert under review plus the rule thresholds, so the model can explain why rules fired. */
@@ -83,11 +90,11 @@ public final class CopilotDtos {
     public record CopilotResponse(UUID alertId, CopilotOutcome outcome, String summary, List<String> riskFactors,
                                   SuggestedAction suggestedAction, Double confidence, List<Citation> citations,
                                   List<String> validationErrors, String model, String promptVersion, int toolCalls,
-                                  long latencyMs, Integer totalTokens, boolean cached) {
+                                  List<String> toolsUsed, long latencyMs, Integer totalTokens, boolean cached) {
 
         CopilotResponse fromCache() {
             return new CopilotResponse(alertId, outcome, summary, riskFactors, suggestedAction, confidence, citations,
-                    validationErrors, model, promptVersion, toolCalls, latencyMs, totalTokens, true);
+                    validationErrors, model, promptVersion, toolCalls, toolsUsed, latencyMs, totalTokens, true);
         }
     }
 }

@@ -31,9 +31,15 @@ public final class GroundingValidator {
     private static final Pattern UUID_PATTERN =
             Pattern.compile("\\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\\b", Pattern.CASE_INSENSITIVE);
 
-    /** A number with a currency marker before or after it, or an Indian unit (lakh/crore). */
+    /**
+     * A number with a currency marker before or after it, or an Indian unit (lakh/crore). A trailing
+     * "INR" only counts as this number's currency when no other number follows it, so in
+     * "transfer #2 INR 25000.00" the amount is 25000.00 (and gets checked), not 2. "L" for lakh is
+     * upper case only.
+     */
     private static final Pattern MONEY = Pattern.compile(
-            "(₹|\\bINR\\b|\\bRs\\.?)?\\s*(\\d[\\d,]*(?:\\.\\d+)?)\\s*(lakhs?\\b|lacs?\\b|crores?\\b|cr\\b|L\\b)?\\s*(INR\\b|rupees?\\b)?",
+            "(₹|\\bINR\\b|\\bRs\\.?)?\\s*(\\d[\\d,]*(?:\\.\\d+)?)\\s*(lakhs?\\b|lacs?\\b|crores?\\b|cr\\b|(?-i:L)\\b)?"
+                    + "\\s*(INR\\b(?!\\s*[₹\\d])|rupees?\\b)?",
             Pattern.CASE_INSENSITIVE);
 
     private static final BigDecimal LAKH = new BigDecimal("100000");

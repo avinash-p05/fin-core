@@ -1,5 +1,7 @@
 package com.fincore.ai;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Timestamp;
 import java.time.Duration;
 import java.time.Instant;
@@ -76,15 +78,26 @@ public class CopilotEvidenceReader {
     }
 
     /** Same notion of "known beneficiary" as the NEW_BENEFICIARY rule: settled payments only. */
-    public BeneficiaryHistory beneficiaryHistory(UUID source, UUID destination, UUID excludingPaymentId) {
+    public BeneficiaryHistory beneficiaryHistory(UUID source, UUID destination, Payment held) {
         return jdbc.queryForObject("""
-                SELECT count(*) AS n, min(created_at) AS first_at, max(created_at) AS last_at
+                SELECT count(*) AS n, min(created_at) AS first_at, max(created_at) AS last_at,
+                       max(amount) AS largest,
+                       (percentile_cont(0.5) WITHIN GROUP (ORDER BY amount))::numeric(19,2) AS median
                   FROM payments
                  WHERE source_account_id = ? AND destination_account_id = ? AND id <> ?
                    AND status IN ('COMPLETED', 'PARTIALLY_REFUNDED', 'REFUNDED')
-                """, (rs, i) -> new BeneficiaryHistory(source, destination, rs.getLong("n"),
-                        instant(rs.getTimestamp("first_at")), instant(rs.getTimestamp("last_at"))),
-                source, destination, excludingPaymentId);
+                """, (rs, i) -> {
+                    BigDecimal largest = rs.getBigDecimal("largest");
+                    BigDecimal ratio = largest == null || largest.signum() == 0 ? null
+                            : held.getAmount().divide(largest, 1, RoundingMode.HALF_UP);
+                    return new BeneficiaryHistory(source, destination, rs.getLong("n"),
+                            instant(rs.getTimestamp("first_at")), instant(rs.getTimestamp("last_at")),
+                            largest, rs.getBigDecimal("median"), ratio);
+                }, source, destination, held.getId());
+    }
+
+    public Payment heldPayment(UUID paymentId) {
+        return payments.get(paymentId);
     }
 
     static PaymentView view(Payment p) {

@@ -21,6 +21,10 @@ What it does:
 - **Fraud screening.** Three configurable rules (high value, velocity counted in Redis, new
   beneficiary) produce APPROVED, REVIEW or DECLINED before any money moves. Analysts review held
   payments.
+- **AI fraud-review copilot.** For a held payment, an LLM (OpenAI or Claude, via Spring AI) reads
+  the payment and account history through read-only tools and drafts a case summary with a
+  suggested action. Every payment and amount it cites is checked against the database; answers
+  that don't check out are discarded. The analyst's approve/reject decision is unchanged.
 - **Transactional outbox.** Events are published to Kafka and processed by an idempotent consumer
   with bounded retries and a dead-letter topic.
 - **Operations dashboard.** Built with React, Vite, TypeScript and Tailwind, and connected to the
@@ -30,7 +34,8 @@ What it does:
 
 **Live demo:** https://fin-core.duckdns.org. Click **Try the demo** on the sign-in page; no account
 needed. The demo user has the OPERATOR role: it can send payments, issue refunds and explore the
-ledger, but cannot approve or reject held payments.
+ledger, and ask the copilot to summarise a held payment (a few calls per day), but cannot approve
+or reject held payments.
 
 Want **analyst access** (fraud review) or have questions? Email me at
 `avinashpauskar05 [at] gmail [dot] com`.
@@ -175,6 +180,12 @@ Then open http://localhost:5173.
 | `FINCORE_DEMO_USER` / `FINCORE_DEMO_PASSWORD` | `demo` / `demo-password` | Demo account credentials; published by `GET /api/v1/public/demo-account` |
 | `FINCORE_ALLOWED_ORIGINS` | `http://localhost:5173` | CORS origins, comma separated |
 | `FINCORE_PORT` | `8080` | HTTP port |
+| `FINCORE_COPILOT_PROVIDER` | `none` | `openai`, `anthropic` or `none` (copilot off, endpoint answers 503) |
+| `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` | - | Key for the chosen provider. Use a separate provider project with a low monthly budget |
+| `FINCORE_COPILOT_MODEL` | `gpt-5-mini` / `claude-sonnet-5-5` | Model for the chosen provider |
+| `FINCORE_COPILOT_PUBLIC_PER_DAY` | `20` | Copilot calls per UTC day shared by all OPERATOR/demo users |
+| `FINCORE_COPILOT_PUBLIC_PER_IP_PER_DAY` | `3` | Copilot calls per UTC day per public IP |
+| `FINCORE_COPILOT_ANALYST_PER_DAY` | `50` | Copilot calls per UTC day per analyst (separate from the public pool) |
 
 Fraud thresholds, outbox retry settings and consumer retry settings are under `fincore.*` in
 [application.yml](backend/src/main/resources/application.yml). You can override any of them with
@@ -190,6 +201,7 @@ would use an identity provider (OIDC) and the OAuth2 resource server.
 
 - `OPERATOR` can use every endpoint except fraud review decisions.
 - `ANALYST` can do everything an operator can, plus `PATCH /api/v1/fraud/alerts/{id}/status`.
+- Both roles can call the fraud copilot, within their daily limits (see below).
 
 ## API
 
@@ -217,6 +229,7 @@ All endpoints are under `/api/v1`. Errors come back as RFC 9457 problem details 
 | GET | `/fraud/alerts?status=&decision=&paymentId=` | Alerts, including allowed transitions |
 | GET | `/fraud/alerts/{id}` | One alert |
 | PATCH | `/fraud/alerts/{id}/status` | `{status, note?}`. ANALYST role only |
+| POST | `/fraud/alerts/{id}/copilot` | AI case summary for an open REVIEW alert. Advisory only; 429 when the daily limit is used up, 503 when off or unavailable |
 | GET | `/accounts/{id}/notifications` | Notifications written by the Kafka consumer |
 | GET | `/dashboard/summary` | Counters and recent payments for the overview page |
 | GET | `/me` | Current user and roles |
@@ -281,6 +294,97 @@ manually by stopping the Redis container: the payment came back `PENDING_REVIEW`
 - Invalid transitions return 409. The alert row is locked, so concurrent approvals execute the
   payment at most once.
 
+## Fraud-review copilot (AI)
+
+On the Fraud Alerts page, **Summarise** asks an LLM to review a held payment and draft a short case
+summary, risk factors and a suggested action (APPROVE, REJECT or ESCALATE). It is advisory: the
+copilot has no path to `FraudReviewService`, and the analyst still approves or rejects as before.
+
+```mermaid
+flowchart LR
+    UI[Dashboard] -->|POST /copilot| S[FraudCopilotService]
+    S --> Q{Daily limit<br/>Redis}
+    Q -->|ok| M[LLM via Spring AI ChatClient]
+    M <-->|tool calls| T[AlertScopedTools<br/>read-only]
+    T --> DB[(PostgreSQL)]
+    M --> V{GroundingValidator}
+    V -->|verified| UI
+    V -->|failed| E[Discard, ESCALATE]
+```
+
+**How it works.** Spring AI's `ChatClient` sends the alert to the model with four `@Tool` methods:
+`getRecentPayments`, `getBeneficiaryHistory`, `getAccountSummary` and `getPayment`. The model decides
+which ones to call; the answer comes back as structured output (a Java record).
+
+**Guardrails.**
+
+- **Read-only, scoped tools.** A new tools object is created per request and can only read the
+  alert's two accounts and payments touching them. Text in a payment description (written by the
+  customer) cannot steer the model to other customers' data. At most 8 tool calls per request.
+- **Grounding check, fail closed.** Every cited payment must be one a tool actually returned, involve
+  the alert's accounts, and carry exactly the recorded amount (`BigDecimal.compareTo`). Every id and
+  money amount in the prose (₹, INR, Rs, lakh, crore) must appear in the evidence. Any miss and the
+  answer is discarded; the analyst sees "answer discarded, review manually" and the suggestion is
+  forced to ESCALATE.
+- **No guessing on failure.** Timeout (30 s), model error or exceeded tool budget answer 503 with no
+  suggestion.
+- **Cost limits.** Calls are counted in Redis *before* the model is called, atomically across all
+  limits: 20 per day shared by all public (OPERATOR/demo) users, 3 per day per public IP, and 50 per
+  day per analyst, so demo traffic cannot lock out reviewers. A grounded answer is cached per alert
+  for 6 hours, so repeat clicks are free. If Redis is down, the copilot refuses (503) rather than
+  call the model unmetered. Over the limit returns 429.
+- **Observable.** Micrometer metrics `copilot.latency` (by outcome), `copilot.tokens`,
+  `copilot.validation.failed`, `copilot.tool.calls`, `copilot.cache.hits`, and one log line per call
+  with model, prompt version, tools used, latency and tokens.
+
+**Enable it.** Put the provider and key in `.env` (never in `application.yml`):
+
+```bash
+FINCORE_COPILOT_PROVIDER=openai      # or anthropic
+OPENAI_API_KEY=sk-...
+```
+
+**Evaluation.** `CopilotEvalTest` builds 30 held payments across six scenarios through the real
+payment and fraud path (routine rent to a known landlord, a 50-400x spike to a known payee, a new
+account fanning out to new payees, a business paying regular suppliers in a burst, a mule account
+passing funds through, and a prompt-injection attempt in the description) and runs the copilot on
+each against the real model with `gpt-5-mini`. Full tables: [docs/copilot-eval.md](docs/copilot-eval.md)
+(v2) and [docs/copilot-eval-v1.md](docs/copilot-eval-v1.md).
+
+| Metric | v1 prompt | v2 prompt |
+|---|---|---|
+| Unsafe approvals (APPROVE where the payment should be stopped) | 2/30 | **0/30** |
+| Suggested action matches the label | 10/30 (33%) | 25/30 (83%) |
+| Suggested action acceptable for the scenario | 28/30 (93%) | 30/30 (100%) |
+| Grounding pass rate | 29/30 | 30/30 |
+| Prompt injection in the description followed | 0/5 | 0/5 |
+| Latency p50 / p95 | 14.0 s / 19.5 s | 13.1 s / 15.9 s |
+| Tokens per alert | ~4,900 | ~5,300 |
+
+What changed in v2, and why:
+
+- **v1 approved large spikes to known payees.** It saw "payee paid before" and stopped looking. The
+  payee-history tool now returns the largest and median earlier amounts and the ratio of the held
+  amount to the largest one, computed in Java rather than by the model, and the prompt only allows
+  APPROVE when that ratio is 3 or less, the account is over 30 days old and nothing else is unusual.
+- **v1 never said REJECT.** The prompt now names the two patterns that warrant it: fan-out from a
+  brand-new account, and pass-through (money mule).
+- **v1 quoted field names** ("ageDays = 0"). v2 is told to write for a person ("opened today").
+- **The eval also found a validator bug.** In "transfer #2 INR 25000.00" the money pattern read "2 INR"
+  as the amount and skipped 25000.00. Fixed, with regression tests.
+
+Remaining gap: v2 escalates all five "business pays its regular suppliers in a burst" cases that are
+labelled APPROVE, because it treats the burst as a warning sign. That is the safe direction. An earlier
+v2 run (before the validator fix) had 2 answers discarded and 26/30 label matches, so expect a few
+points of run-to-run variation.
+
+The labels are the author's judgment on synthetic scenarios, so treat these as a regression baseline
+for prompt and model changes rather than a measure of real-world accuracy.
+
+```bash
+cd backend && ./mvnw test -Dgroups=eval -Dsurefire.excludedGroups=none   # needs Docker and a key in .env
+```
+
 ## Payment and ledger invariants
 
 1. **Balance convention.** For every account, balance = Σ CREDIT − Σ DEBIT. Customer accounts are
@@ -309,7 +413,8 @@ cd frontend && npm run build     # type-check + production build
 ```
 
 The integration tests start real **PostgreSQL 16, Redis 7 and Kafka 3.8** containers, shared for
-the whole run. The last full run executed **65 tests: 65 passed, 0 failed**.
+the whole run. The last full run executed **109 tests: 109 passed, 0 failed** (the copilot eval,
+which calls a real model, is tagged `eval` and excluded).
 
 | Test class | Tests | What it covers |
 |---|---|---|
@@ -325,6 +430,11 @@ the whole run. The last full run executed **65 tests: 65 passed, 0 failed**.
 | `FraudWorkflowTest` | 9 | REVIEW moves no money, approve executes once (also concurrently), reject, re-check on approval, DECLINED, velocity through Redis, new beneficiary, analyst-only PATCH |
 | `RedisOutageTest` | 1 | Payment held for REVIEW when Redis fails |
 | `OutboxPublisherTest` (unit) | 5 | Success headers, exponential backoff, parking as FAILED, pipelined batch with partial failure, stop sending when Kafka is unreachable |
+| `GroundingValidatorTest` (unit) | 14 | Copilot answers: unknown or out-of-scope payments, wrong amounts (to the paisa), amounts and ids in the prose, lakh notation, typical amounts from payee history, a count before an amount |
+| `FraudCopilotIntegrationTest` | 15 | Copilot end to end with a scripted model calling the real tools: grounded answer changes nothing, hallucination and wrong amount discarded, tool scope, tool budget, timeout, model error, per-IP and shared daily limits, analysts not locked out, answer cache |
+| `CopilotQuotaTest` (unit) | 1 | Redis down: copilot refuses instead of calling the model unmetered |
+| `CopilotProviderConfigTest` | 2 | `FINCORE_COPILOT_PROVIDER=openai` selects OpenAI (gpt-5-mini) and no other OpenAI models start |
+| `CopilotDisabledTest` | 1 | With no provider configured the app starts and the copilot answers 503 |
 | `OutboxKafkaIntegrationTest` | 5 | Outbox written only on commit, consume, duplicate publication and delivery have no second effect, refund events, malformed message sent to DLT, bounded retries then DLT |
 
 The concurrency tests found a real bug during development. A repository
@@ -375,7 +485,14 @@ caveats and raw output are in [loadtest/RESULTS.md](loadtest/RESULTS.md).
 - **Single currency (INR), no fees, FX, scheduled payments or statements.**
 - **Rate limiting is basic.** The backend limits each IP to 40 `/api` requests per second and blocks an
   IP for 15 minutes after 10 failed sign-ins (fixed-window Redis counters; both fail open if Redis is
-  down). There are no per-user quotas.
+  down). The copilot has its own daily limits (shared public pool, per IP, per analyst); see
+  [Fraud-review copilot](#fraud-review-copilot-ai).
+- **Copilot limits.** A visitor with many IP addresses can use more than the per-IP limit, but never
+  more than the shared public pool. A cached answer (6 h) doesn't reflect payments made after it.
+  The eval labels are the author's judgment on synthetic scenarios.
+- **The grounding check verifies ids and amounts, not every claim.** In a manual test the model
+  described a held (PENDING_REVIEW) incoming payment as money "received", which it was not. Statuses,
+  dates and account ages in the prose are not machine-checked; the analyst still reads the cited payments.
 - **Load-test numbers are from one laptop** with every component co-located. They are not production capacity figures.
 
 ## Further reading

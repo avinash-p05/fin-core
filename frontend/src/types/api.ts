@@ -185,3 +185,24 @@ export interface ProblemDetail {
   code?: string
   fieldErrors?: Record<string, string>
 }
+
+export type SuggestedAction = 'APPROVE' | 'REJECT' | 'ESCALATE'
+
+/** POST /fraud/alerts/{id}/copilot. Advisory only; an answer that failed verification has no summary. */
+export interface CopilotResponse {
+  alertId: UUID
+  outcome: 'GROUNDED' | 'VALIDATION_FAILED'
+  summary: string | null
+  riskFactors: string[]
+  suggestedAction: SuggestedAction
+  confidence: number | null
+  citations: { paymentId: UUID; amount: number }[]
+  validationErrors: string[]
+  model: string | null
+  promptVersion: string
+  toolCalls: number
+  toolsUsed: string[]
+  latencyMs: number
+  totalTokens: number | null
+  cached: boolean
+}

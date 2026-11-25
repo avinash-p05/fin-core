@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import type { FraudAlert, FraudAlertStatus } from '../types/api'
 import { Button, Card, ErrorMessage, Label, PageHeader, Pagination, Spinner, EmptyState, filterClass, inputClass } from '../components/ui'
 import { StatusBadge } from '../components/StatusBadge'
+import { CopilotPanel } from '../components/CopilotPanel'
 import { Cell, Table, accountName } from '../components/tables'
 
 // Button text for each status an alert can be moved to.
@@ -129,6 +130,8 @@ export function FraudAlertsPage() {
                   <Row label="Reviewed by" value={selected.reviewedBy ?? '-'} />
                   {selected.reviewNote && <Row label="Note" value={selected.reviewNote} />}
                 </dl>
+
+                <CopilotPanel key={selected.id} alert={selected} accounts={accountList} />
 
                 {selected.allowedTransitions.length > 0 && isAnalyst && (
                   <div className="space-y-3 border-t border-gray-200 pt-4">

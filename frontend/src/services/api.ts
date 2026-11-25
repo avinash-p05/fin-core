@@ -1,5 +1,6 @@
 import type {
   Account,
+  CopilotResponse,
   BalanceVerification,
   CreatePaymentRequest,
   DashboardSummary,
@@ -153,4 +154,5 @@ export const api = {
   fraudAlert: (id: string) => get<FraudAlert>(`/fraud/alerts/${id}`),
   updateAlertStatus: async (id: string, status: FraudAlertStatus, note?: string) =>
     (await request<FraudAlert>('PATCH', `/fraud/alerts/${id}/status`, { body: { status, note } })).data,
+  copilot: async (alertId: string) => (await request<CopilotResponse>('POST', `/fraud/alerts/${alertId}/copilot`)).data,
 }

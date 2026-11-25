@@ -21,6 +21,8 @@
         <springdoc.version>3.1.1</springdoc.version>
         <!-- 2.0.x is the Spring AI line built against Spring Boot 4.1 (2.1.x targets Boot 4.2). -->
         <spring-ai.version>2.0.3</spring-ai.version>
+        <!-- The copilot eval calls a real LLM; run it with -Dgroups=eval -Dsurefire.excludedGroups=none -->
+        <surefire.excludedGroups>eval</surefire.excludedGroups>
     </properties>
 
     <dependencyManagement>
@@ -136,6 +138,13 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
                     <parameters>true</parameters>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <excludedGroups>${surefire.excludedGroups}</excludedGroups>
                 </configuration>
             </plugin>
             <plugin>

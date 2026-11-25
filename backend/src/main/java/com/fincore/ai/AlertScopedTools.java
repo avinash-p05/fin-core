@@ -39,6 +39,8 @@ public class AlertScopedTools {
     private final Map<UUID, PaymentView> payments = new ConcurrentHashMap<>();
     private final Map<UUID, AccountView> accounts = new ConcurrentHashMap<>();
     private final AtomicInteger calls = new AtomicInteger();
+    private volatile BeneficiaryHistory beneficiary;
+    private final List<String> toolsUsed = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final AtomicBoolean budgetExceeded = new AtomicBoolean();
     private final AtomicBoolean closed = new AtomicBoolean();
 
@@ -52,7 +54,7 @@ public class AlertScopedTools {
 
     @Tool(description = "Get one payment by id. Only payments into or out of the alert's two accounts are visible.")
     public PaymentView getPayment(@ToolParam(description = "Payment id") UUID paymentId) {
-        spend();
+        spend("getPayment");
         PaymentView p = reader.payment(paymentId);
         if (!scopeAccounts.contains(p.sourceAccountId()) && !scopeAccounts.contains(p.destinationAccountId())) {
             throw new IllegalArgumentException("Payment " + paymentId + " is outside this alert's scope");
@@ -65,7 +67,7 @@ public class AlertScopedTools {
     public List<PaymentView> getRecentPayments(
             @ToolParam(description = "The alert's source or destination account id") UUID accountId,
             @ToolParam(description = "How many days back to look (1-30)") int days) {
-        spend();
+        spend("getRecentPayments");
         requireInScope(accountId);
         int window = Math.clamp(days, 1, limits.maxHistoryDays());
         Instant since = Instant.now().minus(window, ChronoUnit.DAYS);
@@ -76,15 +78,18 @@ public class AlertScopedTools {
 
     @Tool(description = "How many settled payments the alert's source account has sent to its destination before.")
     public BeneficiaryHistory getBeneficiaryHistory() {
-        spend();
+        spend("getBeneficiaryHistory");
         PaymentView held = alert.payment();
-        return reader.beneficiaryHistory(held.sourceAccountId(), held.destinationAccountId(), held.id());
+        BeneficiaryHistory history = reader.beneficiaryHistory(held.sourceAccountId(), held.destinationAccountId(),
+                reader.heldPayment(held.id()));
+        beneficiary = history;
+        return history;
     }
 
     @Tool(description = "Type, status, balance and age of one of the alert's two accounts.")
     public AccountView getAccountSummary(
             @ToolParam(description = "The alert's source or destination account id") UUID accountId) {
-        spend();
+        spend("getAccountSummary");
         requireInScope(accountId);
         AccountView a = reader.account(accountId);
         accounts.put(a.id(), a);
@@ -100,15 +105,21 @@ public class AlertScopedTools {
         return calls.get();
     }
 
+    /** Tool names in call order, refused calls included. */
+    List<String> toolsUsed() {
+        return List.copyOf(toolsUsed);
+    }
+
     boolean budgetExceeded() {
         return budgetExceeded.get();
     }
 
     Evidence evidence() {
-        return new Evidence(alert, scopeAccounts, Map.copyOf(payments), Map.copyOf(accounts));
+        return new Evidence(alert, scopeAccounts, Map.copyOf(payments), Map.copyOf(accounts), beneficiary);
     }
 
-    private void spend() {
+    private void spend(String tool) {
+        toolsUsed.add(tool);
         if (closed.get()) {
             throw new IllegalStateException("This copilot request has ended");
         }
@@ -126,7 +137,7 @@ public class AlertScopedTools {
 
     /** Everything the model was shown during one request; the grounding check's source of truth. */
     public record Evidence(AlertView alert, Set<UUID> scopeAccounts, Map<UUID, PaymentView> payments,
-                           Map<UUID, AccountView> accounts) {
+                           Map<UUID, AccountView> accounts, BeneficiaryHistory beneficiary) {
 
         /** Every money value the model may legitimately quote. */
         public Set<BigDecimal> knownAmounts() {
@@ -138,6 +149,14 @@ public class AlertScopedTools {
                 }
             });
             accounts.values().forEach(a -> amounts.add(norm(a.balance())));
+            if (beneficiary != null) {
+                if (beneficiary.largestPriorAmount() != null) {
+                    amounts.add(norm(beneficiary.largestPriorAmount()));
+                }
+                if (beneficiary.medianPriorAmount() != null) {
+                    amounts.add(norm(beneficiary.medianPriorAmount()));
+                }
+            }
             amounts.add(norm(alert.highValueThreshold()));
             return amounts;
         }

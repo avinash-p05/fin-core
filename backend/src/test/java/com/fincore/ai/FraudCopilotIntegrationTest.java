@@ -116,6 +116,7 @@ class FraudCopilotIntegrationTest extends IntegrationTest {
                 .andExpect(jsonPath("$.confidence").value(0.8))
                 .andExpect(jsonPath("$.citations.length()").value(2))
                 .andExpect(jsonPath("$.toolCalls").value(3))
+                .andExpect(jsonPath("$.toolsUsed[0]").value("getRecentPayments"))
                 .andExpect(jsonPath("$.model").value("scripted-test-model"))
                 .andExpect(jsonPath("$.promptVersion").value(FraudCopilotService.PROMPT_VERSION))
                 .andExpect(jsonPath("$.totalTokens").value(200))
@@ -123,6 +124,7 @@ class FraudCopilotIntegrationTest extends IntegrationTest {
 
         assertThat(toolResults.get(0)).contains(held.getId().toString(), earlier.getId().toString());
         assertThat(toolResults.get(1)).contains("\"settledPayments\":1");
+        assertThat(toolResults.get(1)).contains("\"largestPriorAmount\":2500.50", "\"heldAmountVsLargestPrior\":48.0");
         assertThat(toolResults.get(2)).contains("497499.5"); // 500000.00 - 2500.50; held payment moved nothing
 
         // Advisory only: the alert and the held payment are exactly as before.
