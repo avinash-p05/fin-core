@@ -50,6 +50,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/public/**").permitAll()
                         .requestMatchers(HttpMethod.PATCH, "/api/v1/fraud/alerts/**").hasRole(ROLE_ANALYST)
+                        // Each copilot call costs model tokens, and it serves the reviewer, so not the public demo login.
+                        .requestMatchers(HttpMethod.POST, "/api/v1/fraud/alerts/*/copilot").hasRole(ROLE_ANALYST)
                         .requestMatchers("/api/**").hasAnyRole(ROLE_OPERATOR, ROLE_ANALYST)
                         .requestMatchers("/actuator/**").authenticated()
                         // Everything else is the React dashboard: index.html, /assets/**, favicon and

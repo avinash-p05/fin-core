@@ -28,6 +28,17 @@ spring:
       # Fail fast: a Redis outage must not hang payment requests (see fraud failure policy).
       timeout: 500ms
       connect-timeout: 500ms
+  ai:
+    model:
+      # Fraud-review copilot. "none" = no LLM is configured and POST .../copilot answers 503.
+      # Set FINCORE_COPILOT_PROVIDER=anthropic plus ANTHROPIC_API_KEY to turn it on.
+      chat: ${FINCORE_COPILOT_PROVIDER:none}
+    anthropic:
+      api-key: ${ANTHROPIC_API_KEY:}
+      chat:
+        model: ${FINCORE_COPILOT_MODEL:claude-sonnet-5-5}
+        temperature: 0.0
+        max-tokens: 1500
   kafka:
     bootstrap-servers: ${FINCORE_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -110,6 +121,14 @@ fincore:
     new-beneficiary:
       enabled: true
       score: 20
+  copilot:
+    # Whole request budget (all model round trips and tool calls); exceeding it answers 503.
+    timeout: 30s
+    # Tool calls per request; once spent, tools refuse and the answer is discarded (503).
+    max-tool-calls: 8
+    # Upper bounds the model cannot raise through tool arguments.
+    max-history-days: 30
+    max-history-payments: 25
   security:
     # Local-development users only. Override via environment variables; see README.
     operator-username: ${FINCORE_OPERATOR_USER:operator}
