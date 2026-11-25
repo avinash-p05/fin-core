@@ -77,10 +77,14 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- Fraud-review copilot (com.fincore.ai). Off unless FINCORE_COPILOT_PROVIDER=anthropic. -->
+        <!-- Fraud-review copilot (com.fincore.ai). Off unless FINCORE_COPILOT_PROVIDER is anthropic or openai. -->
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-model-anthropic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springdoc</groupId>

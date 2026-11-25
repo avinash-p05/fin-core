@@ -83,6 +83,11 @@ public final class CopilotDtos {
     public record CopilotResponse(UUID alertId, CopilotOutcome outcome, String summary, List<String> riskFactors,
                                   SuggestedAction suggestedAction, Double confidence, List<Citation> citations,
                                   List<String> validationErrors, String model, String promptVersion, int toolCalls,
-                                  long latencyMs, Integer totalTokens) {
+                                  long latencyMs, Integer totalTokens, boolean cached) {
+
+        CopilotResponse fromCache() {
+            return new CopilotResponse(alertId, outcome, summary, riskFactors, suggestedAction, confidence, citations,
+                    validationErrors, model, promptVersion, toolCalls, latencyMs, totalTokens, true);
+        }
     }
 }

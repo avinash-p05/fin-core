@@ -59,9 +59,16 @@ public class ScriptedChatModel implements ChatModel {
     }
 
     private volatile Script script = tools -> "{}";
+    private final java.util.concurrent.atomic.AtomicInteger calls = new java.util.concurrent.atomic.AtomicInteger();
+
+    /** How many times the "model" was called since the last {@link #script}. */
+    public int calls() {
+        return calls.get();
+    }
 
     public void script(Script script) {
         this.script = script;
+        calls.set(0);
     }
 
     @Override
@@ -71,6 +78,7 @@ public class ScriptedChatModel implements ChatModel {
 
     @Override
     public ChatResponse call(Prompt prompt) {
+        calls.incrementAndGet();
         List<ToolCallback> callbacks = prompt.getOptions() instanceof ToolCallingChatOptions o && o.getToolCallbacks() != null
                 ? o.getToolCallbacks() : List.of();
         String text;

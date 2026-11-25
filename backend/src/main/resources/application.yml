@@ -31,8 +31,22 @@ spring:
   ai:
     model:
       # Fraud-review copilot. "none" = no LLM is configured and POST .../copilot answers 503.
-      # Set FINCORE_COPILOT_PROVIDER=anthropic plus ANTHROPIC_API_KEY to turn it on.
+      # FINCORE_COPILOT_PROVIDER=openai (with OPENAI_API_KEY) or anthropic (with ANTHROPIC_API_KEY).
       chat: ${FINCORE_COPILOT_PROVIDER:none}
+      # The OpenAI starter also brings these; FinCore uses none of them.
+      embedding: none
+      image: none
+      moderation: none
+      audio:
+        speech: none
+        transcription: none
+    openai:
+      api-key: ${OPENAI_API_KEY:}
+      chat:
+        model: ${FINCORE_COPILOT_MODEL:gpt-5-mini}
+        # GPT-5 models only accept the default temperature, and reasoning counts toward this limit.
+        max-completion-tokens: 4000
+        reasoning-effort: low
     anthropic:
       api-key: ${ANTHROPIC_API_KEY:}
       chat:
@@ -129,6 +143,15 @@ fincore:
     # Upper bounds the model cannot raise through tool arguments.
     max-history-days: 30
     max-history-payments: 25
+    # A grounded answer is reused for this long; repeat clicks on an alert cost no tokens or quota.
+    cache-ttl: 6h
+    # Daily model-call limits (UTC days, counted in Redis before the model is called).
+    # Public callers (OPERATOR role, including the "Try the demo" login) share one daily pool
+    # and are also limited per IP. Analysts have their own per-user allowance.
+    quota:
+      public-per-day: ${FINCORE_COPILOT_PUBLIC_PER_DAY:20}
+      public-per-ip-per-day: ${FINCORE_COPILOT_PUBLIC_PER_IP_PER_DAY:3}
+      analyst-per-day: ${FINCORE_COPILOT_ANALYST_PER_DAY:50}
   security:
     # Local-development users only. Override via environment variables; see README.
     operator-username: ${FINCORE_OPERATOR_USER:operator}

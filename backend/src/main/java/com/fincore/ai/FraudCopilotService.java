@@ -42,6 +42,7 @@ import org.springframework.stereotype.Service;
  *
  * <p>Failure policy:
  * <ul>
+ *   <li>Daily allowance used up ({@link CopilotQuota}): HTTP 429, the model is not called.</li>
  *   <li>No model configured, model error, timeout or tool budget exceeded: HTTP 503, no suggestion.</li>
  *   <li>Answer that is unparseable or fails {@link GroundingValidator}: discarded, ESCALATE returned.</li>
  * </ul>
@@ -74,19 +75,24 @@ public class FraudCopilotService {
     private final CopilotEvidenceReader reader;
     private final CopilotProperties props;
     private final MeterRegistry meters;
+    private final CopilotQuota quota;
+    private final CopilotAnswerCache cache;
     private final GroundingValidator validator = new GroundingValidator();
     private final BeanOutputConverter<CopilotDraft> converter = new BeanOutputConverter<>(CopilotDraft.class);
     private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
 
     public FraudCopilotService(ObjectProvider<ChatModel> chatModels, CopilotEvidenceReader reader,
-                               CopilotProperties props, MeterRegistry meters) {
+                               CopilotProperties props, MeterRegistry meters, CopilotQuota quota,
+                               CopilotAnswerCache cache) {
         this.chatModels = chatModels;
         this.reader = reader;
         this.props = props;
         this.meters = meters;
+        this.quota = quota;
+        this.cache = cache;
     }
 
-    public CopilotResponse review(UUID alertId) {
+    public CopilotResponse review(UUID alertId, CopilotQuota.Caller caller) {
         ChatModel model = chatModels.getIfAvailable();
         if (model == null) {
             throw unavailable("COPILOT_DISABLED", "The fraud copilot is not configured on this server");
@@ -96,6 +102,12 @@ public class FraudCopilotService {
             throw ApiException.conflict("COPILOT_NOT_APPLICABLE",
                     "The copilot only reviews held payments with an open REVIEW alert");
         }
+        var cached = cache.get(alertId);
+        if (cached.isPresent()) {
+            Counter.builder("copilot.cache.hits").register(meters).increment();
+            return cached.get().fromCache();
+        }
+        quota.reserve(caller); // before any token is spent
 
         AlertScopedTools tools = new AlertScopedTools(reader, props, alert);
         long start = System.nanoTime();
@@ -146,12 +158,14 @@ public class FraudCopilotService {
 
         if (!check.grounded()) {
             return new CopilotResponse(alertId, outcome, null, List.of(), SuggestedAction.ESCALATE, null, List.of(),
-                    check.errors(), modelName, PROMPT_VERSION, tools.callCount(), latencyMs, totalTokens);
+                    check.errors(), modelName, PROMPT_VERSION, tools.callCount(), latencyMs, totalTokens, false);
         }
-        return new CopilotResponse(alertId, outcome, draft.summary(),
+        CopilotResponse grounded = new CopilotResponse(alertId, outcome, draft.summary(),
                 draft.riskFactors() == null ? List.of() : draft.riskFactors(), draft.suggestedAction(),
                 draft.confidence(), draft.citations() == null ? List.of() : draft.citations(), List.of(),
-                modelName, PROMPT_VERSION, tools.callCount(), latencyMs, totalTokens);
+                modelName, PROMPT_VERSION, tools.callCount(), latencyMs, totalTokens, false);
+        cache.put(grounded);
+        return grounded;
     }
 
     private CopilotDraft parse(ChatResponse response) {
